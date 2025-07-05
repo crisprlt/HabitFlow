@@ -19,7 +19,8 @@ import {
   Activity,
   BookOpen,
   Brain,
-  PenTool
+  PenTool,
+  User
 } from 'lucide-react-native';
 
 const SCALE = 1.2;
@@ -200,15 +201,20 @@ const PrincipalScreen = ({ navigation }) => {
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <NavItem icon={Target} label="Hábitos" active />
-       <NavItem
-      icon={Calendar}
-      label="Calendario"
-      onPress={() => navigation.navigate('HabitCalendar')}
-      />
+        <NavItem
+          icon={Calendar}
+          label="Calendario"
+          onPress={() => navigation.navigate('HabitCalendar')}
+        />
         <NavItem icon={Clock} 
-        label="To do"
-        onPress={() => navigation.navigate('Todo')}
-         />
+          label="To Do"
+          onPress={() => navigation.navigate('Todo')}
+        />
+        <NavItem
+          icon={User}
+          label="Perfil"
+          onPress={() => navigation.navigate('Perfil')}
+        />
       </View>
     </View>
   );
@@ -230,7 +236,6 @@ const NavItem = ({ icon: Icon, label, active, onPress }) => (
     <Text style={[styles.navText, active && { color: '#968ce4' }]}>{label}</Text>
   </TouchableOpacity>
 );
-
 
 const styles = StyleSheet.create({
   container: {
@@ -260,6 +265,15 @@ const styles = StyleSheet.create({
   headerIcons: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  profileButton: {
+    width: 40 * SCALE,
+    height: 40 * SCALE,
+    backgroundColor: '#f3f0ff',
+    borderRadius: 20 * SCALE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8 * SCALE,
   },
   streakIcon: {
     width: 40 * SCALE,
@@ -299,15 +313,16 @@ const styles = StyleSheet.create({
     color: '#968ce4',
   },
   progressBarBackground: {
-    height: 10 * SCALE,
-    backgroundColor: '#fff',
-    borderRadius: 10 * SCALE,
-    overflow: 'hidden',
+    height: 8 * SCALE,
+    backgroundColor: '#ddd',
+    borderRadius: 4 * SCALE,
     marginBottom: 8 * SCALE,
+    overflow: 'hidden',
   },
   progressBarFill: {
-    height: 10 * SCALE,
+    height: 8 * SCALE,
     backgroundColor: '#968ce4',
+    borderRadius: 4 * SCALE,
   },
   progressText: {
     fontSize: 12 * SCALE,
@@ -316,64 +331,71 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20 * SCALE,
+    marginBottom: 16 * SCALE,
   },
   statCard: {
     flex: 1,
-    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
     padding: 12 * SCALE,
-    backgroundColor: '#fff',
     borderRadius: 12 * SCALE,
+    alignItems: 'center',
     marginHorizontal: 4 * SCALE,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 3 * SCALE,
-    elevation: 2,
   },
   statLabel: {
     fontSize: 10 * SCALE,
     color: '#666',
+    marginTop: 4 * SCALE,
   },
   statValue: {
     fontSize: 14 * SCALE,
     fontWeight: 'bold',
     color: '#333',
+    marginTop: 2 * SCALE,
   },
   sectionTitle: {
-    fontSize: 16 * SCALE,
+    fontSize: 18 * SCALE,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 8 * SCALE,
+    marginBottom: 12 * SCALE,
   },
   habitCard: {
     backgroundColor: '#fff',
     borderRadius: 12 * SCALE,
-    padding: 12 * SCALE,
+    padding: 16 * SCALE,
     marginBottom: 12 * SCALE,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#eee',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   habitCardCompleted: {
-    backgroundColor: '#f6f5ff',
-    borderColor: '#e0e0ff',
+    backgroundColor: '#f8f9fa',
+    borderColor: '#968ce4',
   },
   habitHeader: {
     flexDirection: 'row',
+    alignItems: 'center',
   },
   habitContent: {
-    marginLeft: 12 * SCALE,
     flex: 1,
+    marginLeft: 12 * SCALE,
   },
   habitTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4 * SCALE,
+    marginBottom: 8 * SCALE,
   },
   iconContainer: {
-    backgroundColor: '#eee',
-    padding: 4 * SCALE,
-    borderRadius: 6 * SCALE,
-    marginRight: 6 * SCALE,
+    width: 24 * SCALE,
+    height: 24 * SCALE,
+    borderRadius: 12 * SCALE,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8 * SCALE,
   },
   habitName: {
     fontSize: 14 * SCALE,
