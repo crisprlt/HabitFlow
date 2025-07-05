@@ -6,8 +6,9 @@ import {
   ScrollView,
   StyleSheet,
   TextInput,
-  Modal,
-  Alert
+  Alert,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import {
   Plus,
@@ -23,10 +24,9 @@ import {
   BookOpen,
   Brain,
   PenTool,
-  User,
   Edit3,
-  Save,
-  X
+  X,
+  User
 } from 'lucide-react-native';
 
 const SCALE = 1.2;
@@ -75,10 +75,21 @@ const PrincipalScreen = ({ navigation }) => {
     }
   ]);
 
-  // Estados para las notas
-  const [showNoteModal, setShowNoteModal] = useState(false);
-  const [dailyNote, setDailyNote] = useState('');
-  const [tempNote, setTempNote] = useState('');
+  // Estado para las notas
+  const [notes, setNotes] = useState([
+    {
+      id: 1,
+      text: "Recordar beber más agua después del ejercicio",
+      timestamp: new Date().toLocaleString()
+    },
+    {
+      id: 2,
+      text: "Añadir meditación de 5 minutos antes de dormir",
+      timestamp: new Date().toLocaleString()
+    }
+  ]);
+  
+  const [newNote, setNewNote] = useState('');
 
   const toggleHabit = (habitId) => {
     setHabits(prev =>
@@ -87,6 +98,35 @@ const PrincipalScreen = ({ navigation }) => {
           ? { ...habit, completed: !habit.completed }
           : habit
       )
+    );
+  };
+
+  // Función para agregar una nueva nota
+  const addNote = () => {
+    if (newNote.trim()) {
+      const note = {
+        id: Date.now(),
+        text: newNote.trim(),
+        timestamp: new Date().toLocaleString()
+      };
+      setNotes(prev => [note, ...prev]);
+      setNewNote('');
+    }
+  };
+
+  // Función para eliminar una nota
+  const deleteNote = (noteId) => {
+    Alert.alert(
+      'Eliminar nota',
+      '¿Estás seguro de que quieres eliminar esta nota?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Eliminar', 
+          style: 'destructive',
+          onPress: () => setNotes(prev => prev.filter(note => note.id !== noteId))
+        }
+      ]
     );
   };
 
@@ -101,25 +141,17 @@ const PrincipalScreen = ({ navigation }) => {
     day: 'numeric'
   });
 
-  const handleOpenNoteModal = () => {
-    setTempNote(dailyNote);
-    setShowNoteModal(true);
-  };
-
-  const handleSaveNote = () => {
-    setDailyNote(tempNote);
-    setShowNoteModal(false);
-    Alert.alert('Éxito', 'Nota guardada correctamente');
-  };
-
-  const handleCancelNote = () => {
-    setTempNote(dailyNote);
-    setShowNoteModal(false);
-  };
-
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
 
         {/* Header */}
         <View style={styles.header}>
@@ -218,60 +250,62 @@ const PrincipalScreen = ({ navigation }) => {
             </View>
           );
         })}
-        <View style={{ height: 80 * SCALE }} />
-      </ScrollView>
 
-      {/* Note Modal */}
-      <Modal
-        visible={showNoteModal}
-        transparent={true}
-        animationType="slide"
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Nota del día</Text>
-              <TouchableOpacity onPress={handleCancelNote}>
-                <X size={24 * SCALE} color="#999" />
-              </TouchableOpacity>
-            </View>
-            
-            <Text style={styles.modalDate}>{today}</Text>
-            
+        {/* Sección de Notas */}
+        <View style={styles.notesSection}>
+          <View style={styles.notesSectionHeader}>
+            <Text style={styles.sectionTitle}>Notas</Text>
+            <PenTool size={18 * SCALE} color="#968ce4" />
+          </View>
+          
+          {/* Input para nueva nota */}
+          <View style={styles.newNoteContainer}>
             <TextInput
               style={styles.noteInput}
-              value={tempNote}
-              onChangeText={setTempNote}
-              placeholder="¿Cómo fue tu día con los hábitos? ¿Algún comentario o reflexión?"
+              value={newNote}
+              onChangeText={setNewNote}
+              placeholder="Escribe una nota..."
               placeholderTextColor="#999"
               multiline
-              textAlignVertical="top"
-              maxLength={500}
+              numberOfLines={2}
             />
-            
-            <Text style={styles.characterCount}>
-              {tempNote.length}/500 caracteres
-            </Text>
-            
-            <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={styles.cancelButton}
-                onPress={handleCancelNote}
-              >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.saveButton}
-                onPress={handleSaveNote}
-              >
-                <Save size={16 * SCALE} color="#fff" />
-                <Text style={styles.saveButtonText}>Guardar</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity 
+              style={[styles.addNoteButton, !newNote.trim() && styles.addNoteButtonDisabled]}
+              onPress={addNote}
+              disabled={!newNote.trim()}
+            >
+              <Plus size={20 * SCALE} color="#fff" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Lista de notas */}
+          <View style={styles.notesContainer}>
+            {notes.length === 0 ? (
+              <View style={styles.emptyNotesContainer}>
+                <Text style={styles.emptyNotesText}>No hay notas aún</Text>
+                <Text style={styles.emptyNotesSubtext}>Agrega tu primera nota para empezar</Text>
+              </View>
+            ) : (
+              notes.map(note => (
+                <View key={note.id} style={styles.noteCard}>
+                  <View style={styles.noteContent}>
+                    <Text style={styles.noteText}>{note.text}</Text>
+                    <Text style={styles.noteTimestamp}>{note.timestamp}</Text>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.deleteNoteButton}
+                    onPress={() => deleteNote(note.id)}
+                  >
+                    <X size={16 * SCALE} color="#999" />
+                  </TouchableOpacity>
+                </View>
+              ))
+            )}
           </View>
         </View>
-      </Modal>
+
+        <View style={{ height: 120 * SCALE }} />
+      </ScrollView>
 
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
@@ -281,17 +315,18 @@ const PrincipalScreen = ({ navigation }) => {
           label="Calendario"
           onPress={() => navigation.navigate('HabitCalendar')}
         />
-        <NavItem icon={Clock} 
-          label="To Do"
+        <NavItem 
+          icon={Clock} 
+          label="To do"
           onPress={() => navigation.navigate('Todo')}
         />
-        <NavItem
-          icon={User}
+        <NavItem 
+          icon={User} 
           label="Perfil"
           onPress={() => navigation.navigate('Perfil')}
         />
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -341,15 +376,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  profileButton: {
-    width: 40 * SCALE,
-    height: 40 * SCALE,
-    backgroundColor: '#f3f0ff',
-    borderRadius: 20 * SCALE,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8 * SCALE,
-  },
   streakIcon: {
     width: 40 * SCALE,
     height: 40 * SCALE,
@@ -388,16 +414,15 @@ const styles = StyleSheet.create({
     color: '#968ce4',
   },
   progressBarBackground: {
-    height: 8 * SCALE,
-    backgroundColor: '#ddd',
-    borderRadius: 4 * SCALE,
-    marginBottom: 8 * SCALE,
+    height: 10 * SCALE,
+    backgroundColor: '#fff',
+    borderRadius: 10 * SCALE,
     overflow: 'hidden',
+    marginBottom: 8 * SCALE,
   },
   progressBarFill: {
-    height: 8 * SCALE,
+    height: 10 * SCALE,
     backgroundColor: '#968ce4',
-    borderRadius: 4 * SCALE,
   },
   progressText: {
     fontSize: 12 * SCALE,
@@ -406,71 +431,64 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16 * SCALE,
+    marginBottom: 20 * SCALE,
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
-    padding: 12 * SCALE,
-    borderRadius: 12 * SCALE,
     alignItems: 'center',
+    padding: 12 * SCALE,
+    backgroundColor: '#fff',
+    borderRadius: 12 * SCALE,
     marginHorizontal: 4 * SCALE,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 3 * SCALE,
+    elevation: 2,
   },
   statLabel: {
     fontSize: 10 * SCALE,
     color: '#666',
-    marginTop: 4 * SCALE,
   },
   statValue: {
     fontSize: 14 * SCALE,
     fontWeight: 'bold',
     color: '#333',
-    marginTop: 2 * SCALE,
   },
   sectionTitle: {
-    fontSize: 18 * SCALE,
+    fontSize: 16 * SCALE,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 12 * SCALE,
+    marginBottom: 8 * SCALE,
   },
   habitCard: {
     backgroundColor: '#fff',
     borderRadius: 12 * SCALE,
-    padding: 16 * SCALE,
+    padding: 12 * SCALE,
     marginBottom: 12 * SCALE,
     borderWidth: 1,
-    borderColor: '#eee',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderColor: '#ccc',
   },
   habitCardCompleted: {
-    backgroundColor: '#f8f9fa',
-    borderColor: '#968ce4',
+    backgroundColor: '#f6f5ff',
+    borderColor: '#e0e0ff',
   },
   habitHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
   },
   habitContent: {
-    flex: 1,
     marginLeft: 12 * SCALE,
+    flex: 1,
   },
   habitTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8 * SCALE,
+    marginBottom: 4 * SCALE,
   },
   iconContainer: {
-    width: 24 * SCALE,
-    height: 24 * SCALE,
-    borderRadius: 12 * SCALE,
-    backgroundColor: '#f0f0f0',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8 * SCALE,
+    backgroundColor: '#eee',
+    padding: 4 * SCALE,
+    borderRadius: 6 * SCALE,
+    marginRight: 6 * SCALE,
   },
   habitName: {
     fontSize: 14 * SCALE,
@@ -518,6 +536,95 @@ const styles = StyleSheet.create({
     height: 6 * SCALE,
     borderRadius: 3 * SCALE,
   },
+  // Estilos para la sección de notas
+  notesSection: {
+    marginTop: 20 * SCALE,
+  },
+  notesSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12 * SCALE,
+  },
+  newNoteContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginBottom: 16 * SCALE,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12 * SCALE,
+    padding: 12 * SCALE,
+  },
+  noteInput: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 8 * SCALE,
+    padding: 12 * SCALE,
+    fontSize: 14 * SCALE,
+    color: '#333',
+    minHeight: 44 * SCALE,
+    maxHeight: 100 * SCALE,
+    marginRight: 8 * SCALE,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    textAlignVertical: 'top',
+  },
+  addNoteButton: {
+    width: 36 * SCALE,
+    height: 36 * SCALE,
+    backgroundColor: '#968ce4',
+    borderRadius: 18 * SCALE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addNoteButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  notesContainer: {
+    marginBottom: 16 * SCALE,
+  },
+  emptyNotesContainer: {
+    padding: 32 * SCALE,
+    alignItems: 'center',
+  },
+  emptyNotesText: {
+    fontSize: 16 * SCALE,
+    color: '#666',
+    fontWeight: '500',
+    marginBottom: 4 * SCALE,
+  },
+  emptyNotesSubtext: {
+    fontSize: 14 * SCALE,
+    color: '#999',
+  },
+  noteCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12 * SCALE,
+    padding: 12 * SCALE,
+    marginBottom: 8 * SCALE,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  noteContent: {
+    flex: 1,
+  },
+  noteText: {
+    fontSize: 14 * SCALE,
+    color: '#333',
+    lineHeight: 20 * SCALE,
+    marginBottom: 4 * SCALE,
+  },
+  noteTimestamp: {
+    fontSize: 11 * SCALE,
+    color: '#999',
+  },
+  deleteNoteButton: {
+    width: 28 * SCALE,
+    height: 28 * SCALE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8 * SCALE,
+  },
   bottomNav: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -545,130 +652,6 @@ const styles = StyleSheet.create({
   navText: {
     fontSize: 10 * SCALE,
     color: '#888',
-  },
-  // Estilos para la sección de notas
-  noteSection: {
-    marginBottom: 16 * SCALE,
-  },
-  noteSectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12 * SCALE,
-  },
-  editNoteButton: {
-    width: 32 * SCALE,
-    height: 32 * SCALE,
-    borderRadius: 16 * SCALE,
-    backgroundColor: '#f3f0ff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  noteCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12 * SCALE,
-    padding: 16 * SCALE,
-    borderWidth: 1,
-    borderColor: '#eee',
-    borderStyle: 'dashed',
-    minHeight: 80 * SCALE,
-    justifyContent: 'center',
-  },
-  noteText: {
-    fontSize: 14 * SCALE,
-    color: '#333',
-    lineHeight: 20 * SCALE,
-  },
-  notePlaceholder: {
-    fontSize: 14 * SCALE,
-    color: '#999',
-    fontStyle: 'italic',
-    lineHeight: 20 * SCALE,
-  },
-  // Estilos del modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20 * SCALE,
-    borderTopRightRadius: 20 * SCALE,
-    paddingHorizontal: 24 * SCALE,
-    paddingTop: 24 * SCALE,
-    paddingBottom: 40 * SCALE,
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8 * SCALE,
-  },
-  modalTitle: {
-    fontSize: 18 * SCALE,
-    fontWeight: '600',
-    color: '#333',
-  },
-  modalDate: {
-    fontSize: 14 * SCALE,
-    color: '#968ce4',
-    marginBottom: 20 * SCALE,
-    textTransform: 'capitalize',
-  },
-  noteInput: {
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 12 * SCALE,
-    paddingHorizontal: 16 * SCALE,
-    paddingVertical: 16 * SCALE,
-    fontSize: 16 * SCALE,
-    color: '#333',
-    minHeight: 120 * SCALE,
-    maxHeight: 200 * SCALE,
-    backgroundColor: '#fafafa',
-  },
-  characterCount: {
-    fontSize: 12 * SCALE,
-    color: '#999',
-    textAlign: 'right',
-    marginTop: 8 * SCALE,
-    marginBottom: 24 * SCALE,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: 12 * SCALE,
-  },
-  cancelButton: {
-    flex: 1,
-    paddingVertical: 14 * SCALE,
-    paddingHorizontal: 20 * SCALE,
-    borderRadius: 12 * SCALE,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 16 * SCALE,
-    color: '#666',
-    fontWeight: '500',
-  },
-  saveButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14 * SCALE,
-    paddingHorizontal: 20 * SCALE,
-    borderRadius: 12 * SCALE,
-    backgroundColor: '#968ce4',
-    gap: 8 * SCALE,
-  },
-  saveButtonText: {
-    fontSize: 16 * SCALE,
-    color: '#fff',
-    fontWeight: '600',
   },
 });
 

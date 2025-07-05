@@ -245,13 +245,6 @@ const PerfilScreen = ({ navigation }) => {
               onPress={() => Alert.alert('Info', 'Funcionalidad próximamente')}
               color="#96ceb4"
             />
-            <MenuItem
-              icon={Star}
-              title="Calificar App"
-              subtitle="Danos tu opinión"
-              onPress={() => Alert.alert('Info', 'Funcionalidad próximamente')}
-              color="#ffd93d"
-            />
           </View>
         </View>
 
