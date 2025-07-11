@@ -14,7 +14,7 @@ import {
 import { Infinity, Eye, EyeOff } from 'lucide-react-native';
 
 const LoginScreen = ({navigation}) => {
-  const [activeTab, setActiveTab] = useState('login'); // 'login' o 'registro'
+  const [activeTab, setActiveTab] = useState('login'); 
   
   // Estados para Login
   const [loginEmail, setLoginEmail] = useState('');
@@ -45,7 +45,6 @@ const LoginScreen = ({navigation}) => {
       [name]: value
     }));
     
-    // Limpiar error cuando el usuario empiece a escribir
     if (errores[name]) {
       setErrores(prev => ({
         ...prev,
@@ -138,7 +137,7 @@ const LoginScreen = ({navigation}) => {
 
   const renderRegistroForm = () => (
     <View style={styles.formContainer}>
-      {/* Nombre y Apellido */}
+   
       <View style={styles.row}>
         <View style={styles.halfInput}>
           <TextInput
