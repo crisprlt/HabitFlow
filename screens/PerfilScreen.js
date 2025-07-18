@@ -199,17 +199,10 @@ const PerfilScreen = ({ navigation }) => {
               color="#968ce4"
             />
             <MenuItem
-              icon={Mail}
-              title="Cambiar Email"
-              subtitle={userData.email}
-              onPress={() => Alert.alert('Info', 'Funcionalidad próximamente')}
-              color="#45b7d1"
-            />
-            <MenuItem
               icon={Shield}
               title="Cambiar Contraseña"
               subtitle="Actualiza tu contraseña"
-              onPress={() => Alert.alert('Info', 'Funcionalidad próximamente')}
+              onPress={() => navigation.navigate('ChangePassword')}
               color="#4ecdc4"
             />
           </View>
@@ -235,18 +228,6 @@ const PerfilScreen = ({ navigation }) => {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Soporte</Text>
-          <View style={styles.menuContainer}>
-            <MenuItem
-              icon={HelpCircle}
-              title="Ayuda y Soporte"
-              subtitle="Preguntas frecuentes"
-              onPress={() => Alert.alert('Info', 'Funcionalidad próximamente')}
-              color="#96ceb4"
-            />
-          </View>
-        </View>
 
         {/* Logout Section */}
         <View style={styles.section}>

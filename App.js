@@ -8,8 +8,9 @@ import PrincipalScreen from './screens/PrincipalScreen';
 import AddHabitScreen from './screens/AddHabitScreen'; 
 import HabitCalendarScreen from './screens/HabitCalendarScreen';
 import TodoScreen from './screens/TodoScreen';
-import RegisterScreen from './screens/RegisterScreen';
 import PerfilScreen from './screens/PerfilScreen';
+import ChangePasswordScreen from './screens/ChangePasswordScreen';
+import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -23,8 +24,9 @@ export default function App() {
         <Stack.Screen name="AddHabit" component={AddHabitScreen} options={{ headerShown: false }} />
         <Stack.Screen name="HabitCalendar" component={HabitCalendarScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Todo" component={TodoScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Perfil" component={PerfilScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

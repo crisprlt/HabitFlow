@@ -73,6 +73,10 @@ const TodoScreen = ({ navigation }) => {
     const [newTaskText, setNewTaskText] = useState('');
     const [newTaskPriority, setNewTaskPriority] = useState('media');
     const [editingArea, setEditingArea] = useState(null);
+    
+    // Estados para edición de tareas
+    const [editingTask, setEditingTask] = useState(null);
+    const [editTaskText, setEditTaskText] = useState('');
 
     const colors = [
         '#968ce4', '#ff6b6b', '#4ecdc4', '#45b7d1', 
@@ -175,10 +179,135 @@ const TodoScreen = ({ navigation }) => {
         );
     };
 
+    // Funciones para edición de tareas
+    const startEditingTask = (areaId, task) => {
+        setEditingTask({ areaId, taskId: task.id });
+        setEditTaskText(task.text);
+    };
+
+    const saveTaskEdit = () => {
+        if (!editTaskText.trim()) {
+            Alert.alert('Error', 'La tarea no puede estar vacía');
+            return;
+        }
+
+        setAreas(areas.map(area => 
+            area.id === editingTask.areaId 
+                ? {
+                    ...area, 
+                    tasks: area.tasks.map(task => 
+                        task.id === editingTask.taskId 
+                            ? { ...task, text: editTaskText.trim() }
+                            : task
+                    )
+                }
+                : area
+        ));
+
+        setEditingTask(null);
+        setEditTaskText('');
+    };
+
+    const cancelTaskEdit = () => {
+        setEditingTask(null);
+        setEditTaskText('');
+    };
+
     const getAreaStats = (area) => {
         const total = area.tasks.length;
         const completed = area.tasks.filter(task => task.completed).length;
         return { total, completed, percentage: total > 0 ? (completed / total) * 100 : 0 };
+    };
+
+    const renderTaskItem = (task, area, isCompleted = false) => {
+        const isEditing = editingTask && 
+                         editingTask.areaId === area.id && 
+                         editingTask.taskId === task.id;
+
+        if (isEditing) {
+            return (
+                <View key={task.id} style={[styles.taskItem, styles.editingTaskItem]}>
+                    <TouchableOpacity 
+                        style={styles.taskCheckbox}
+                        onPress={() => toggleTask(area.id, task.id)}
+                    >
+                        {task.completed ? (
+                            <CheckCircle2 size={16 * SCALE} color={area.color} />
+                        ) : (
+                            <Circle size={16 * SCALE} color={area.color} />
+                        )}
+                    </TouchableOpacity>
+                    
+                    <TextInput
+                        style={styles.editTaskInput}
+                        value={editTaskText}
+                        onChangeText={setEditTaskText}
+                        autoFocus
+                        multiline
+                        onBlur={saveTaskEdit}
+                        onSubmitEditing={saveTaskEdit}
+                        returnKeyType="done"
+                        blurOnSubmit={true}
+                    />
+                    
+                    <TouchableOpacity 
+                        style={styles.saveTaskButton}
+                        onPress={saveTaskEdit}
+                    >
+                        <Check size={16 * SCALE} color="#4CAF50" />
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                        style={styles.cancelTaskButton}
+                        onPress={cancelTaskEdit}
+                    >
+                        <X size={16 * SCALE} color="#999" />
+                    </TouchableOpacity>
+                </View>
+            );
+        }
+
+        return (
+            <View key={task.id} style={[
+                styles.taskItem, 
+                isCompleted && styles.completedTask
+            ]}>
+                <TouchableOpacity 
+                    style={styles.taskCheckbox}
+                    onPress={() => toggleTask(area.id, task.id)}
+                >
+                    {task.completed ? (
+                        <CheckCircle2 size={16 * SCALE} color={area.color} />
+                    ) : (
+                        <Circle size={16 * SCALE} color={area.color} />
+                    )}
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                    style={styles.taskTextContainer}
+                    onPress={() => startEditingTask(area.id, task)}
+                >
+                    <Text style={[
+                        styles.taskText, 
+                        isCompleted && styles.completedTaskText
+                    ]}>
+                        {task.text}
+                    </Text>
+                </TouchableOpacity>
+                
+                <View style={[
+                    styles.priorityDot,
+                    { backgroundColor: priorities.find(p => p.value === task.priority)?.color }
+                ]} />
+                
+                <TouchableOpacity 
+                    style={styles.deleteTaskButton}
+                    onPress={() => deleteTask(area.id, task.id)}
+                >
+                    <X size={14 * SCALE} color="#999" />
+                </TouchableOpacity>
+            </View>
+        );
     };
 
     const renderAreaCard = (area) => {
@@ -223,27 +352,7 @@ const TodoScreen = ({ navigation }) => {
                 </View>
 
                 {/* Lista de tareas incompletas */}
-                {incompleteTasks.map(task => (
-                    <View key={task.id} style={styles.taskItem}>
-                        <TouchableOpacity 
-                            style={styles.taskCheckbox}
-                            onPress={() => toggleTask(area.id, task.id)}
-                        >
-                            <Circle size={16 * SCALE} color={area.color} />
-                        </TouchableOpacity>
-                        <Text style={styles.taskText}>{task.text}</Text>
-                        <View style={[
-                            styles.priorityDot,
-                            { backgroundColor: priorities.find(p => p.value === task.priority)?.color }
-                        ]} />
-                        <TouchableOpacity 
-                            style={styles.deleteTaskButton}
-                            onPress={() => deleteTask(area.id, task.id)}
-                        >
-                            <X size={14 * SCALE} color="#999" />
-                        </TouchableOpacity>
-                    </View>
-                ))}
+                {incompleteTasks.map(task => renderTaskItem(task, area, false))}
 
                 {/* Tareas completadas (colapsables) */}
                 {completedTasks.length > 0 && (
@@ -251,25 +360,7 @@ const TodoScreen = ({ navigation }) => {
                         <Text style={styles.completedSectionTitle}>
                             Completadas ({completedTasks.length})
                         </Text>
-                        {completedTasks.slice(0, 3).map(task => (
-                            <View key={task.id} style={[styles.taskItem, styles.completedTask]}>
-                                <TouchableOpacity 
-                                    style={styles.taskCheckbox}
-                                    onPress={() => toggleTask(area.id, task.id)}
-                                >
-                                    <CheckCircle2 size={16 * SCALE} color={area.color} />
-                                </TouchableOpacity>
-                                <Text style={[styles.taskText, styles.completedTaskText]}>
-                                    {task.text}
-                                </Text>
-                                <TouchableOpacity 
-                                    style={styles.deleteTaskButton}
-                                    onPress={() => deleteTask(area.id, task.id)}
-                                >
-                                    <X size={14 * SCALE} color="#999" />
-                                </TouchableOpacity>
-                            </View>
-                        ))}
+                        {completedTasks.slice(0, 3).map(task => renderTaskItem(task, area, true))}
                         {completedTasks.length > 3 && (
                             <Text style={styles.moreTasksText}>
                                 +{completedTasks.length - 3} más...
@@ -609,14 +700,42 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: '#f5f5f5',
     },
+    editingTaskItem: {
+        backgroundColor: '#f8f9fa',
+        borderRadius: 8 * SCALE,
+        marginVertical: 2 * SCALE,
+        paddingHorizontal: 8 * SCALE,
+    },
     taskCheckbox: {
         marginRight: 12 * SCALE,
         padding: 4 * SCALE,
     },
+    taskTextContainer: {
+        flex: 1,
+    },
     taskText: {
+        fontSize: 14 * SCALE,
+        color: '#333',
+    },
+    editTaskInput: {
         flex: 1,
         fontSize: 14 * SCALE,
         color: '#333',
+        backgroundColor: '#fff',
+        borderRadius: 6 * SCALE,
+        paddingHorizontal: 8 * SCALE,
+        paddingVertical: 6 * SCALE,
+        marginRight: 8 * SCALE,
+        borderWidth: 1,
+        borderColor: '#968ce4',
+        minHeight: 32 * SCALE,
+    },
+    saveTaskButton: {
+        padding: 6 * SCALE,
+        marginRight: 4 * SCALE,
+    },
+    cancelTaskButton: {
+        padding: 6 * SCALE,
     },
     priorityDot: {
         width: 8 * SCALE,

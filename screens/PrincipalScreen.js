@@ -8,7 +8,9 @@ import {
   TextInput,
   Alert,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Modal,
+  Clipboard
 } from 'react-native';
 import {
   Plus,
@@ -26,7 +28,9 @@ import {
   PenTool,
   Edit3,
   X,
-  User
+  User,
+  Copy,
+  Check,
 } from 'lucide-react-native';
 
 const SCALE = 1.2;
@@ -90,6 +94,11 @@ const PrincipalScreen = ({ navigation }) => {
   ]);
   
   const [newNote, setNewNote] = useState('');
+  
+  // Estados para edición de notas
+  const [editingNote, setEditingNote] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editNoteText, setEditNoteText] = useState('');
 
   const toggleHabit = (habitId) => {
     setHabits(prev =>
@@ -129,6 +138,51 @@ const PrincipalScreen = ({ navigation }) => {
       ]
     );
   };
+
+  // Función para copiar nota al portapapeles
+  const copyNote = async (note) => {
+    try {
+      await Clipboard.setString(note.text);
+      Alert.alert('¡Copiado!', 'La nota ha sido copiada al portapapeles');
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo copiar la nota');
+    }
+  };
+
+  // Función para abrir modal de edición
+  const openEditModal = (note) => {
+    setEditingNote(note);
+    setEditNoteText(note.text);
+    setShowEditModal(true);
+  };
+
+  // Función para guardar nota editada
+  const saveEditedNote = () => {
+    if (!editNoteText.trim()) {
+      Alert.alert('Error', 'La nota no puede estar vacía');
+      return;
+    }
+
+    setNotes(prev => prev.map(note => 
+      note.id === editingNote.id 
+        ? { ...note, text: editNoteText.trim(), timestamp: new Date().toLocaleString() }
+        : note
+    ));
+
+    setShowEditModal(false);
+    setEditingNote(null);
+    setEditNoteText('');
+    Alert.alert('¡Guardado!', 'La nota ha sido actualizada');
+  };
+
+  // Función para cancelar edición
+  const cancelEdit = () => {
+    setShowEditModal(false);
+    setEditingNote(null);
+    setEditNoteText('');
+  };
+
+
 
   const completedHabits = habits.filter(h => h.completed).length;
   const totalHabits = habits.length;
@@ -287,18 +341,29 @@ const PrincipalScreen = ({ navigation }) => {
               </View>
             ) : (
               notes.map(note => (
-                <View key={note.id} style={styles.noteCard}>
+                <TouchableOpacity 
+                  key={note.id} 
+                  style={styles.noteCard}
+                >
                   <View style={styles.noteContent}>
                     <Text style={styles.noteText}>{note.text}</Text>
                     <Text style={styles.noteTimestamp}>{note.timestamp}</Text>
                   </View>
-                  <TouchableOpacity 
-                    style={styles.deleteNoteButton}
-                    onPress={() => deleteNote(note.id)}
-                  >
-                    <X size={16 * SCALE} color="#999" />
-                  </TouchableOpacity>
-                </View>
+                  <View style={styles.noteActions}>
+                    <TouchableOpacity 
+                      style={styles.noteActionButton}
+                      onPress={() => copyNote(note)}
+                    >
+                      <Copy size={16 * SCALE} color="#968ce4" />
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.noteActionButton}
+                      onPress={() => openEditModal(note)}
+                    >
+                      <Edit3 size={16 * SCALE} color="#968ce4" />
+                    </TouchableOpacity>
+                  </View>
+                </TouchableOpacity>
               ))
             )}
           </View>
@@ -306,6 +371,54 @@ const PrincipalScreen = ({ navigation }) => {
 
         <View style={{ height: 120 * SCALE }} />
       </ScrollView>
+
+      {/* Modal de edición */}
+      <Modal
+        visible={showEditModal}
+        transparent={true}
+        animationType="slide"
+      >
+        <KeyboardAvoidingView 
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Editar Nota</Text>
+              <TouchableOpacity onPress={cancelEdit}>
+                <X size={24 * SCALE} color="#999" />
+              </TouchableOpacity>
+            </View>
+            
+            <TextInput
+              style={styles.editInput}
+              value={editNoteText}
+              onChangeText={setEditNoteText}
+              placeholder="Edita tu nota..."
+              placeholderTextColor="#999"
+              multiline
+              numberOfLines={6}
+              autoFocus
+            />
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={styles.cancelButton}
+                onPress={cancelEdit}
+              >
+                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.saveButton}
+                onPress={saveEditedNote}
+              >
+                <Check size={18 * SCALE} color="#fff" />
+                <Text style={styles.saveButtonText}>Guardar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
@@ -618,12 +731,94 @@ const styles = StyleSheet.create({
     fontSize: 11 * SCALE,
     color: '#999',
   },
+  noteActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 8 * SCALE,
+  },
+  noteActionButton: {
+    width: 32 * SCALE,
+    height: 32 * SCALE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 4 * SCALE,
+  },
   deleteNoteButton: {
     width: 28 * SCALE,
     height: 28 * SCALE,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8 * SCALE,
+  },
+  // Estilos del modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20 * SCALE,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16 * SCALE,
+    padding: 20 * SCALE,
+    width: '100%',
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20 * SCALE,
+  },
+  modalTitle: {
+    fontSize: 18 * SCALE,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  editInput: {
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 12 * SCALE,
+    padding: 16 * SCALE,
+    fontSize: 16 * SCALE,
+    color: '#333',
+    minHeight: 150 * SCALE,
+    maxHeight: 250 * SCALE,
+    textAlignVertical: 'top',
+    marginBottom: 20 * SCALE,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12 * SCALE,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12 * SCALE,
+    padding: 16 * SCALE,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16 * SCALE,
+    color: '#666',
+    fontWeight: '500',
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#968ce4',
+    borderRadius: 12 * SCALE,
+    padding: 16 * SCALE,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8 * SCALE,
+  },
+  saveButtonText: {
+    fontSize: 16 * SCALE,
+    color: '#fff',
+    fontWeight: '600',
   },
   bottomNav: {
     flexDirection: 'row',
