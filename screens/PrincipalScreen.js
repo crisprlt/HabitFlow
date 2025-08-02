@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
-  Clipboard
+  Clipboard,
+  useColorScheme
 } from 'react-native';
 import {
   Plus,
@@ -31,11 +32,105 @@ import {
   User,
   Copy,
   Check,
+  Moon,
+  Sun,
+  Smartphone
 } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SCALE = 1.2;
 
 const PrincipalScreen = ({ navigation }) => {
+  const systemColorScheme = useColorScheme();
+  const [themeMode, setThemeMode] = useState('system'); // 'system', 'light', 'dark'
+  const [showThemeModal, setShowThemeModal] = useState(false);
+
+  // Determinar si está en modo oscuro
+  const isDarkMode = themeMode === 'system' ? systemColorScheme === 'dark' : themeMode === 'dark';
+
+  // Cargar preferencia de tema al iniciar
+  useEffect(() => {
+    loadThemePreference();
+  }, []);
+
+  const loadThemePreference = async () => {
+    try {
+      const savedTheme = await AsyncStorage.getItem('principalScreen_theme');
+      if (savedTheme) {
+        setThemeMode(savedTheme);
+      }
+    } catch (error) {
+      console.log('Error cargando tema:', error);
+    }
+  };
+
+  const saveThemePreference = async (theme) => {
+    try {
+      await AsyncStorage.setItem('principalScreen_theme', theme);
+      setThemeMode(theme);
+      setShowThemeModal(false);
+    } catch (error) {
+      console.log('Error guardando tema:', error);
+    }
+  };
+
+  // Definir colores según el tema
+  const colors = {
+    // Colores de fondo
+    background: isDarkMode ? '#1a1a1a' : '#ffffff',
+    surface: isDarkMode ? '#2d2d2d' : '#ffffff',
+    surfaceVariant: isDarkMode ? '#3d3d3d' : '#f5f5f5',
+    
+    // Colores de texto
+    text: isDarkMode ? '#ffffff' : '#333333',
+    textSecondary: isDarkMode ? '#b0b0b0' : '#666666',
+    textTertiary: isDarkMode ? '#808080' : '#999999',
+    
+    // Colores principales
+    primary: '#968ce4',
+    primaryVariant: isDarkMode ? '#7b6fd1' : '#968ce4',
+    
+    // Colores de tarjetas
+    card: isDarkMode ? '#2d2d2d' : '#ffffff',
+    cardCompleted: isDarkMode ? '#3d2d4d' : '#f3f0ff',
+    
+    // Colores de bordes
+    border: isDarkMode ? '#404040' : '#ddd',
+    borderLight: isDarkMode ? '#404040' : '#e0e0e0',
+    borderCompleted: isDarkMode ? '#5d4d6d' : '#e0e0ff',
+    
+    // Colores de inputs
+    input: isDarkMode ? '#3d3d3d' : '#ffffff',
+    inputBorder: isDarkMode ? '#555' : '#e0e0e0',
+    inputBackground: isDarkMode ? '#2d2d2d' : '#f8f9fa',
+    placeholder: isDarkMode ? '#808080' : '#999999',
+    
+    // Colores de navegación
+    bottomNavBg: isDarkMode ? '#2d2d2d' : '#ffffff',
+    bottomNavBorder: isDarkMode ? '#404040' : '#ddd',
+    navIcon: isDarkMode ? '#404040' : '#eee',
+    navIconActive: '#968ce4',
+    navText: isDarkMode ? '#b0b0b0' : '#888',
+    navTextActive: '#968ce4',
+    
+    // Colores específicos
+    progressBg: isDarkMode ? '#404040' : '#fff',
+    progressFill: '#968ce4',
+    categoryBg: isDarkMode ? '#404040' : '#eee',
+    iconContainer: isDarkMode ? '#404040' : '#eee',
+    
+    // Colores de modal
+    modalOverlay: isDarkMode ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)',
+    modalBackground: isDarkMode ? '#2d2d2d' : '#ffffff',
+    
+    // Colores de estado
+    success: '#4ecdc4',
+    warning: '#ffd93d',
+    error: '#ff6b6b',
+    info: '#54a0ff',
+    streak: '#ff9500',
+  };
+
   const [habits, setHabits] = useState([
     {
       id: 1,
@@ -182,7 +277,15 @@ const PrincipalScreen = ({ navigation }) => {
     setEditNoteText('');
   };
 
+  const getThemeIcon = () => {
+    if (themeMode === 'system') return Smartphone;
+    return themeMode === 'dark' ? Moon : Sun;
+  };
 
+  const getThemeText = () => {
+    if (themeMode === 'system') return 'Seguir sistema';
+    return themeMode === 'dark' ? 'Modo oscuro' : 'Modo claro';
+  };
 
   const completedHabits = habits.filter(h => h.completed).length;
   const totalHabits = habits.length;
@@ -195,9 +298,36 @@ const PrincipalScreen = ({ navigation }) => {
     day: 'numeric'
   });
 
+  const ThemeOption = ({ icon: Icon, title, subtitle, isSelected, onPress }) => (
+    <TouchableOpacity 
+      style={[
+        styles.themeOption, 
+        { 
+          backgroundColor: colors.card,
+          borderColor: isSelected ? colors.primary : colors.border,
+          borderWidth: isSelected ? 2 : 1
+        }
+      ]} 
+      onPress={onPress}
+    >
+      <View style={styles.themeOptionLeft}>
+        <View style={[styles.themeIcon, { backgroundColor: colors.surfaceVariant }]}>
+          <Icon size={24} color={colors.primary} />
+        </View>
+        <View>
+          <Text style={[styles.themeTitle, { color: colors.text }]}>{title}</Text>
+          <Text style={[styles.themeSubtitle, { color: colors.textSecondary }]}>{subtitle}</Text>
+        </View>
+      </View>
+      {isSelected && (
+        <View style={[styles.selectedIndicator, { backgroundColor: colors.primary }]} />
+      )}
+    </TouchableOpacity>
+  );
+
   return (
     <KeyboardAvoidingView 
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
@@ -207,15 +337,21 @@ const PrincipalScreen = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
       >
 
-        {/* Header */}
+        {/* Header con botón de tema */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>HabitFlow</Text>
-            <Text style={styles.date}>{today}</Text>
+            <Text style={[styles.title, { color: colors.primary }]}>HabitFlow</Text>
+            <Text style={[styles.date, { color: colors.textSecondary }]}>{today}</Text>
           </View>
           <View style={styles.headerIcons}>
             <TouchableOpacity
-              style={styles.addButton}
+              style={[styles.themeButton, { backgroundColor: colors.cardCompleted }]}
+              onPress={() => setShowThemeModal(true)}
+            >
+              {React.createElement(getThemeIcon(), { size: 20 * SCALE, color: colors.primary })}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.addButton, { backgroundColor: colors.primary }]}
               onPress={() => navigation.navigate('AddHabit')}
             >
               <Plus size={20 * SCALE} color="#fff" />
@@ -224,27 +360,27 @@ const PrincipalScreen = ({ navigation }) => {
         </View>
 
         {/* Progress */}
-        <View style={styles.progressCard}>
+        <View style={[styles.progressCard, { backgroundColor: colors.cardCompleted }]}>
           <View style={styles.progressHeader}>
-            <Text style={styles.progressTitle}>Progreso de Hoy</Text>
-            <Text style={styles.progressValue}>{completionPercentage}%</Text>
+            <Text style={[styles.progressTitle, { color: colors.text }]}>Progreso de Hoy</Text>
+            <Text style={[styles.progressValue, { color: colors.primary }]}>{completionPercentage}%</Text>
           </View>
-          <View style={styles.progressBarBackground}>
-            <View style={[styles.progressBarFill, { width: `${completionPercentage}%` }]} />
+          <View style={[styles.progressBarBackground, { backgroundColor: colors.progressBg }]}>
+            <View style={[styles.progressBarFill, { backgroundColor: colors.progressFill, width: `${completionPercentage}%` }]} />
           </View>
-          <Text style={styles.progressText}>
+          <Text style={[styles.progressText, { color: colors.textSecondary }]}>
             {completedHabits} de {totalHabits} hábitos completados
           </Text>
         </View>
 
         {/* Stats */}
         <View style={styles.statsContainer}>
-          <StatCard icon={Target} label="Racha" value="7 días" />
-          <StatCard icon={Calendar} label="Esta semana" value="85%" />
+          <StatCard icon={Target} label="Racha" value="7 días" colors={colors} />
+          <StatCard icon={Calendar} label="Esta semana" value="85%" colors={colors} />
         </View>
 
         {/* Habits */}
-        <Text style={styles.sectionTitle}>Hábitos</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Hábitos</Text>
         {habits.map(habit => {
           const Icon = habit.icon;
           const progress = (habit.current / habit.target) * 100;
@@ -254,47 +390,63 @@ const PrincipalScreen = ({ navigation }) => {
               key={habit.id}
               style={[
                 styles.habitCard,
-                habit.completed && styles.habitCardCompleted
+                { 
+                  backgroundColor: colors.card, 
+                  borderColor: colors.border 
+                },
+                habit.completed && { 
+                  backgroundColor: colors.cardCompleted, 
+                  borderColor: colors.borderCompleted 
+                }
               ]}
             >
               <View style={styles.habitHeader}>
                 <TouchableOpacity onPress={() => toggleHabit(habit.id)}>
                   {habit.completed ? (
-                    <CheckCircle2 size={24 * SCALE} color="#968ce4" />
+                    <CheckCircle2 size={24 * SCALE} color={colors.primary} />
                   ) : (
-                    <Circle size={24 * SCALE} color="#ccc" />
+                    <Circle size={24 * SCALE} color={colors.textTertiary} />
                   )}
                 </TouchableOpacity>
                 <View style={styles.habitContent}>
                   <View style={styles.habitTopRow}>
-                    <View style={styles.iconContainer}>
-                      <Icon size={16 * SCALE} color={habit.completed ? "#968ce4" : "#555"} />
+                    <View style={[styles.iconContainer, { backgroundColor: colors.iconContainer }]}>
+                      <Icon size={16 * SCALE} color={habit.completed ? colors.primary : colors.textSecondary} />
                     </View>
                     <Text style={[
                       styles.habitName,
-                      habit.completed && styles.habitNameCompleted
+                      { color: colors.text },
+                      habit.completed && { color: colors.textSecondary, textDecorationLine: 'line-through' }
                     ]}>
                       {habit.name}
                     </Text>
                   </View>
 
                   <View style={styles.habitDetails}>
-                    <Text style={styles.category}>{habit.category}</Text>
+                    <Text style={[styles.category, { 
+                      color: colors.textSecondary, 
+                      backgroundColor: colors.categoryBg 
+                    }]}>
+                      {habit.category}
+                    </Text>
                     <View style={styles.streakRow}>
-                      <Flame size={12 * SCALE} color="orange" />
-                      <Text style={styles.streakText}>{habit.streak}</Text>
+                      <Flame size={12 * SCALE} color={colors.streak} />
+                      <Text style={[styles.streakText, { color: colors.text }]}>{habit.streak}</Text>
                     </View>
                     {habit.target > 1 && (
-                      <Text style={styles.progressNumber}>{habit.current}/{habit.target}</Text>
+                      <Text style={[styles.progressNumber, { color: colors.textSecondary }]}>{habit.current}/{habit.target}</Text>
                     )}
                   </View>
 
                   {habit.target > 1 && (
-                    <View style={styles.habitProgressBarBackground}>
+                    <View style={[styles.habitProgressBarBackground, { backgroundColor: colors.border }]}>
                       <View
                         style={[
                           styles.habitProgressBarFill,
-                          { width: `${progress}%`, backgroundColor: habit.completed ? '#968ce4' : '#ccc' }
+                          { 
+                            width: `${progress}%`, 
+                            backgroundColor: habit.completed ? colors.primary : colors.textTertiary 
+                          }
                         ]}
                       />
                     </View>
@@ -308,23 +460,31 @@ const PrincipalScreen = ({ navigation }) => {
         {/* Sección de Notas */}
         <View style={styles.notesSection}>
           <View style={styles.notesSectionHeader}>
-            <Text style={styles.sectionTitle}>Notas</Text>
-            <PenTool size={18 * SCALE} color="#968ce4" />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Notas</Text>
+            <PenTool size={18 * SCALE} color={colors.primary} />
           </View>
           
           {/* Input para nueva nota */}
-          <View style={styles.newNoteContainer}>
+          <View style={[styles.newNoteContainer, { backgroundColor: colors.inputBackground }]}>
             <TextInput
-              style={styles.noteInput}
+              style={[styles.noteInput, { 
+                backgroundColor: colors.input,
+                borderColor: colors.inputBorder,
+                color: colors.text
+              }]}
               value={newNote}
               onChangeText={setNewNote}
               placeholder="Escribe una nota..."
-              placeholderTextColor="#999"
+              placeholderTextColor={colors.placeholder}
               multiline
               numberOfLines={2}
             />
             <TouchableOpacity 
-              style={[styles.addNoteButton, !newNote.trim() && styles.addNoteButtonDisabled]}
+              style={[
+                styles.addNoteButton, 
+                { backgroundColor: colors.primary },
+                !newNote.trim() && { backgroundColor: colors.textTertiary }
+              ]}
               onPress={addNote}
               disabled={!newNote.trim()}
             >
@@ -336,31 +496,34 @@ const PrincipalScreen = ({ navigation }) => {
           <View style={styles.notesContainer}>
             {notes.length === 0 ? (
               <View style={styles.emptyNotesContainer}>
-                <Text style={styles.emptyNotesText}>No hay notas aún</Text>
-                <Text style={styles.emptyNotesSubtext}>Agrega tu primera nota para empezar</Text>
+                <Text style={[styles.emptyNotesText, { color: colors.textSecondary }]}>No hay notas aún</Text>
+                <Text style={[styles.emptyNotesSubtext, { color: colors.textTertiary }]}>Agrega tu primera nota para empezar</Text>
               </View>
             ) : (
               notes.map(note => (
                 <TouchableOpacity 
                   key={note.id} 
-                  style={styles.noteCard}
+                  style={[styles.noteCard, { 
+                    backgroundColor: colors.card,
+                    borderColor: colors.border
+                  }]}
                 >
                   <View style={styles.noteContent}>
-                    <Text style={styles.noteText}>{note.text}</Text>
-                    <Text style={styles.noteTimestamp}>{note.timestamp}</Text>
+                    <Text style={[styles.noteText, { color: colors.text }]}>{note.text}</Text>
+                    <Text style={[styles.noteTimestamp, { color: colors.textTertiary }]}>{note.timestamp}</Text>
                   </View>
                   <View style={styles.noteActions}>
                     <TouchableOpacity 
                       style={styles.noteActionButton}
                       onPress={() => copyNote(note)}
                     >
-                      <Copy size={16 * SCALE} color="#968ce4" />
+                      <Copy size={16 * SCALE} color={colors.primary} />
                     </TouchableOpacity>
                     <TouchableOpacity 
                       style={styles.noteActionButton}
                       onPress={() => openEditModal(note)}
                     >
-                      <Edit3 size={16 * SCALE} color="#968ce4" />
+                      <Edit3 size={16 * SCALE} color={colors.primary} />
                     </TouchableOpacity>
                   </View>
                 </TouchableOpacity>
@@ -372,6 +535,50 @@ const PrincipalScreen = ({ navigation }) => {
         <View style={{ height: 120 * SCALE }} />
       </ScrollView>
 
+      {/* Modal de selección de tema */}
+      <Modal
+        visible={showThemeModal}
+        transparent={true}
+        animationType="slide"
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: colors.modalOverlay }]}>
+          <View style={[styles.modalContent, { backgroundColor: colors.modalBackground }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Seleccionar Tema</Text>
+              <TouchableOpacity onPress={() => setShowThemeModal(false)}>
+                <X size={24 * SCALE} color={colors.textTertiary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.themeModalBody}>
+              <ThemeOption
+                icon={Smartphone}
+                title="Seguir sistema"
+                subtitle="Usar el tema del teléfono"
+                isSelected={themeMode === 'system'}
+                onPress={() => saveThemePreference('system')}
+              />
+              
+              <ThemeOption
+                icon={Sun}
+                title="Modo claro"
+                subtitle="Usar siempre tema claro"
+                isSelected={themeMode === 'light'}
+                onPress={() => saveThemePreference('light')}
+              />
+              
+              <ThemeOption
+                icon={Moon}
+                title="Modo oscuro"
+                subtitle="Usar siempre tema oscuro"
+                isSelected={themeMode === 'dark'}
+                onPress={() => saveThemePreference('dark')}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Modal de edición */}
       <Modal
         visible={showEditModal}
@@ -379,23 +586,27 @@ const PrincipalScreen = ({ navigation }) => {
         animationType="slide"
       >
         <KeyboardAvoidingView 
-          style={styles.modalOverlay}
+          style={[styles.modalOverlay, { backgroundColor: colors.modalOverlay }]}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Editar Nota</Text>
+          <View style={[styles.modalContent, { backgroundColor: colors.modalBackground }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Editar Nota</Text>
               <TouchableOpacity onPress={cancelEdit}>
-                <X size={24 * SCALE} color="#999" />
+                <X size={24 * SCALE} color={colors.textTertiary} />
               </TouchableOpacity>
             </View>
             
             <TextInput
-              style={styles.editInput}
+              style={[styles.editInput, { 
+                borderColor: colors.inputBorder,
+                backgroundColor: colors.input,
+                color: colors.text
+              }]}
               value={editNoteText}
               onChangeText={setEditNoteText}
               placeholder="Edita tu nota..."
-              placeholderTextColor="#999"
+              placeholderTextColor={colors.placeholder}
               multiline
               numberOfLines={6}
               autoFocus
@@ -403,13 +614,13 @@ const PrincipalScreen = ({ navigation }) => {
             
             <View style={styles.modalButtons}>
               <TouchableOpacity 
-                style={styles.cancelButton}
+                style={[styles.cancelButton, { backgroundColor: colors.surfaceVariant }]}
                 onPress={cancelEdit}
               >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
+                <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={styles.saveButton}
+                style={[styles.saveButton, { backgroundColor: colors.primary }]}
                 onPress={saveEditedNote}
               >
                 <Check size={18 * SCALE} color="#fff" />
@@ -421,49 +632,65 @@ const PrincipalScreen = ({ navigation }) => {
       </Modal>
 
       {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <NavItem icon={Target} label="Hábitos" active />
+      <View style={[styles.bottomNav, { 
+        backgroundColor: colors.bottomNavBg,
+        borderTopColor: colors.bottomNavBorder
+      }]}>
+        <NavItem icon={Target} label="Hábitos" active colors={colors} />
         <NavItem
           icon={Calendar}
           label="Calendario"
           onPress={() => navigation.navigate('HabitCalendar')}
+          colors={colors}
         />
         <NavItem 
           icon={Clock} 
           label="To do"
           onPress={() => navigation.navigate('Todo')}
+          colors={colors}
         />
         <NavItem 
           icon={User} 
           label="Perfil"
           onPress={() => navigation.navigate('Perfil')}
+          colors={colors}
         />
       </View>
     </KeyboardAvoidingView>
   );
 };
 
-const StatCard = ({ icon: Icon, label, value }) => (
-  <View style={styles.statCard}>
-    <Icon size={20 * SCALE} color="#968ce4" />
-    <Text style={styles.statLabel}>{label}</Text>
-    <Text style={styles.statValue}>{value}</Text>
+const StatCard = ({ icon: Icon, label, value, colors }) => (
+  <View style={[styles.statCard, { 
+    backgroundColor: colors.card,
+    shadowColor: colors.text
+  }]}>
+    <Icon size={20 * SCALE} color={colors.primary} />
+    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{label}</Text>
+    <Text style={[styles.statValue, { color: colors.text }]}>{value}</Text>
   </View>
 );
 
-const NavItem = ({ icon: Icon, label, active, onPress }) => (
+const NavItem = ({ icon: Icon, label, active, onPress, colors }) => (
   <TouchableOpacity style={styles.navItem} onPress={onPress}>
-    <View style={[styles.navIcon, active && { backgroundColor: '#968ce4' }]}>
-      <Icon size={16 * SCALE} color={active ? '#fff' : '#888'} />
+    <View style={[
+      styles.navIcon, 
+      { backgroundColor: active ? colors.navIconActive : colors.navIcon }
+    ]}>
+      <Icon size={16 * SCALE} color={active ? '#fff' : colors.navText} />
     </View>
-    <Text style={[styles.navText, active && { color: '#968ce4' }]}>{label}</Text>
+    <Text style={[
+      styles.navText, 
+      { color: active ? colors.navTextActive : colors.navText }
+    ]}>
+      {label}
+    </Text>
   </TouchableOpacity>
 );
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   scrollContainer: {
     padding: 16 * SCALE,
@@ -478,36 +705,31 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24 * SCALE,
     fontWeight: 'bold',
-    color: '#968ce4',
   },
   date: {
     fontSize: 14 * SCALE,
-    color: '#888',
     textTransform: 'capitalize',
   },
   headerIcons: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8 * SCALE,
   },
-  streakIcon: {
+  themeButton: {
     width: 40 * SCALE,
     height: 40 * SCALE,
-    backgroundColor: '#ede9fe',
     borderRadius: 20 * SCALE,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8 * SCALE,
   },
   addButton: {
     width: 40 * SCALE,
     height: 40 * SCALE,
-    backgroundColor: '#968ce4',
     borderRadius: 20 * SCALE,
     alignItems: 'center',
     justifyContent: 'center',
   },
   progressCard: {
-    backgroundColor: '#f3f0ff',
     borderRadius: 16 * SCALE,
     padding: 16 * SCALE,
     marginBottom: 16 * SCALE,
@@ -524,22 +746,18 @@ const styles = StyleSheet.create({
   progressValue: {
     fontSize: 20 * SCALE,
     fontWeight: 'bold',
-    color: '#968ce4',
   },
   progressBarBackground: {
     height: 10 * SCALE,
-    backgroundColor: '#fff',
     borderRadius: 10 * SCALE,
     overflow: 'hidden',
     marginBottom: 8 * SCALE,
   },
   progressBarFill: {
     height: 10 * SCALE,
-    backgroundColor: '#968ce4',
   },
   progressText: {
     fontSize: 12 * SCALE,
-    color: '#666',
   },
   statsContainer: {
     flexDirection: 'row',
@@ -550,40 +768,29 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     padding: 12 * SCALE,
-    backgroundColor: '#fff',
     borderRadius: 12 * SCALE,
     marginHorizontal: 4 * SCALE,
-    shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 3 * SCALE,
     elevation: 2,
   },
   statLabel: {
     fontSize: 10 * SCALE,
-    color: '#666',
   },
   statValue: {
     fontSize: 14 * SCALE,
     fontWeight: 'bold',
-    color: '#333',
   },
   sectionTitle: {
     fontSize: 16 * SCALE,
     fontWeight: 'bold',
-    color: '#333',
     marginBottom: 8 * SCALE,
   },
   habitCard: {
-    backgroundColor: '#fff',
     borderRadius: 12 * SCALE,
     padding: 12 * SCALE,
     marginBottom: 12 * SCALE,
     borderWidth: 1,
-    borderColor: '#ccc',
-  },
-  habitCardCompleted: {
-    backgroundColor: '#f6f5ff',
-    borderColor: '#e0e0ff',
   },
   habitHeader: {
     flexDirection: 'row',
@@ -598,7 +805,6 @@ const styles = StyleSheet.create({
     marginBottom: 4 * SCALE,
   },
   iconContainer: {
-    backgroundColor: '#eee',
     padding: 4 * SCALE,
     borderRadius: 6 * SCALE,
     marginRight: 6 * SCALE,
@@ -606,11 +812,6 @@ const styles = StyleSheet.create({
   habitName: {
     fontSize: 14 * SCALE,
     fontWeight: '500',
-    color: '#333',
-  },
-  habitNameCompleted: {
-    textDecorationLine: 'line-through',
-    color: '#888',
   },
   habitDetails: {
     flexDirection: 'row',
@@ -619,8 +820,6 @@ const styles = StyleSheet.create({
   },
   category: {
     fontSize: 12 * SCALE,
-    color: '#666',
-    backgroundColor: '#eee',
     paddingHorizontal: 6 * SCALE,
     paddingVertical: 2 * SCALE,
     borderRadius: 10 * SCALE,
@@ -632,15 +831,12 @@ const styles = StyleSheet.create({
   streakText: {
     fontSize: 12 * SCALE,
     marginLeft: 4 * SCALE,
-    color: '#444',
   },
   progressNumber: {
     fontSize: 12 * SCALE,
-    color: '#666',
   },
   habitProgressBarBackground: {
     height: 6 * SCALE,
-    backgroundColor: '#ddd',
     borderRadius: 3 * SCALE,
     marginTop: 4 * SCALE,
     overflow: 'hidden',
@@ -662,34 +858,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     marginBottom: 16 * SCALE,
-    backgroundColor: '#f8f9fa',
     borderRadius: 12 * SCALE,
     padding: 12 * SCALE,
   },
   noteInput: {
     flex: 1,
-    backgroundColor: '#fff',
     borderRadius: 8 * SCALE,
     padding: 12 * SCALE,
     fontSize: 14 * SCALE,
-    color: '#333',
     minHeight: 44 * SCALE,
     maxHeight: 100 * SCALE,
     marginRight: 8 * SCALE,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
     textAlignVertical: 'top',
   },
   addNoteButton: {
     width: 36 * SCALE,
     height: 36 * SCALE,
-    backgroundColor: '#968ce4',
     borderRadius: 18 * SCALE,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  addNoteButtonDisabled: {
-    backgroundColor: '#ccc',
   },
   notesContainer: {
     marginBottom: 16 * SCALE,
@@ -700,21 +888,17 @@ const styles = StyleSheet.create({
   },
   emptyNotesText: {
     fontSize: 16 * SCALE,
-    color: '#666',
     fontWeight: '500',
     marginBottom: 4 * SCALE,
   },
   emptyNotesSubtext: {
     fontSize: 14 * SCALE,
-    color: '#999',
   },
   noteCard: {
-    backgroundColor: '#fff',
     borderRadius: 12 * SCALE,
     padding: 12 * SCALE,
     marginBottom: 8 * SCALE,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
@@ -723,13 +907,11 @@ const styles = StyleSheet.create({
   },
   noteText: {
     fontSize: 14 * SCALE,
-    color: '#333',
     lineHeight: 20 * SCALE,
     marginBottom: 4 * SCALE,
   },
   noteTimestamp: {
     fontSize: 11 * SCALE,
-    color: '#999',
   },
   noteActions: {
     flexDirection: 'row',
@@ -743,23 +925,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginLeft: 4 * SCALE,
   },
-  deleteNoteButton: {
-    width: 28 * SCALE,
-    height: 28 * SCALE,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 8 * SCALE,
-  },
   // Estilos del modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20 * SCALE,
   },
   modalContent: {
-    backgroundColor: '#fff',
     borderRadius: 16 * SCALE,
     padding: 20 * SCALE,
     width: '100%',
@@ -770,19 +943,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20 * SCALE,
+    paddingBottom: 16 * SCALE,
+    borderBottomWidth: 1,
   },
   modalTitle: {
     fontSize: 18 * SCALE,
     fontWeight: 'bold',
-    color: '#333',
   },
   editInput: {
     borderWidth: 1,
-    borderColor: '#e0e0e0',
     borderRadius: 12 * SCALE,
     padding: 16 * SCALE,
     fontSize: 16 * SCALE,
-    color: '#333',
     minHeight: 150 * SCALE,
     maxHeight: 250 * SCALE,
     textAlignVertical: 'top',
@@ -795,19 +967,16 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
     borderRadius: 12 * SCALE,
     padding: 16 * SCALE,
     alignItems: 'center',
   },
   cancelButtonText: {
     fontSize: 16 * SCALE,
-    color: '#666',
     fontWeight: '500',
   },
   saveButton: {
     flex: 1,
-    backgroundColor: '#968ce4',
     borderRadius: 12 * SCALE,
     padding: 16 * SCALE,
     alignItems: 'center',
@@ -820,12 +989,48 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
+  // Estilos del modal de tema
+  themeModalBody: {
+    paddingVertical: 16,
+  },
+  themeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  themeOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  themeIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  themeTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  themeSubtitle: {
+    fontSize: 13,
+  },
+  selectedIndicator: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
   bottomNav: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     borderTopWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#fff',
     paddingVertical: 10 * SCALE,
     position: 'absolute',
     bottom: 0,
@@ -839,14 +1044,12 @@ const styles = StyleSheet.create({
     width: 32 * SCALE,
     height: 32 * SCALE,
     borderRadius: 16 * SCALE,
-    backgroundColor: '#eee',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 2 * SCALE,
   },
   navText: {
     fontSize: 10 * SCALE,
-    color: '#888',
   },
 });
 
