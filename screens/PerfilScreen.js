@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,9 @@ import {
   Alert,
   Modal,
   TextInput,
-  Dimensions
+  Dimensions,
+  Switch,
+  useColorScheme
 } from 'react-native';
 import {
   ArrowLeft,
@@ -25,14 +27,23 @@ import {
   Award,
   Target,
   Calendar,
-  BarChart3
+  BarChart3,
+  Moon,
+  Sun,
+  Smartphone,
+  X
 } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SCALE = 1.2;
 const { width } = Dimensions.get('window');
 
 const PerfilScreen = ({ navigation }) => {
+  const systemColorScheme = useColorScheme();
+  const [themeMode, setThemeMode] = useState('system'); // 'system', 'light', 'dark'
+  const [showThemeModal, setShowThemeModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  
   const [userData, setUserData] = useState({
     nombre: 'Juan',
     apellido: 'Pérez',
@@ -48,6 +59,78 @@ const PerfilScreen = ({ navigation }) => {
     apellido: userData.apellido,
     email: userData.email
   });
+
+  // Determinar si está en modo oscuro
+  const isDarkMode = themeMode === 'system' ? systemColorScheme === 'dark' : themeMode === 'dark';
+
+  // Cargar preferencia de tema al iniciar
+  useEffect(() => {
+    loadThemePreference();
+  }, []);
+
+  const loadThemePreference = async () => {
+    try {
+      const savedTheme = await AsyncStorage.getItem('perfilScreen_theme');
+      if (savedTheme) {
+        setThemeMode(savedTheme);
+      }
+    } catch (error) {
+      console.log('Error cargando tema:', error);
+    }
+  };
+
+  const saveThemePreference = async (theme) => {
+    try {
+      await AsyncStorage.setItem('perfilScreen_theme', theme);
+      setThemeMode(theme);
+      setShowThemeModal(false);
+    } catch (error) {
+      console.log('Error guardando tema:', error);
+    }
+  };
+
+  // Definir colores según el tema
+  const colors = {
+    // Colores de fondo
+    background: isDarkMode ? '#1a1a1a' : '#ffffff',
+    surface: isDarkMode ? '#2d2d2d' : '#ffffff',
+    surfaceVariant: isDarkMode ? '#3d3d3d' : '#f5f5f5',
+    
+    // Colores de texto
+    text: isDarkMode ? '#ffffff' : '#333333',
+    textSecondary: isDarkMode ? '#b0b0b0' : '#666666',
+    textTertiary: isDarkMode ? '#808080' : '#999999',
+    
+    // Colores principales
+    primary: '#968ce4',
+    primaryVariant: isDarkMode ? '#7b6fd1' : '#968ce4',
+    
+    // Colores de tarjetas
+    card: isDarkMode ? '#2d2d2d' : '#ffffff',
+    cardCompleted: isDarkMode ? '#3d2d4d' : '#f3f0ff',
+    
+    // Colores de bordes
+    border: isDarkMode ? '#404040' : '#f0f0f0',
+    borderLight: isDarkMode ? '#404040' : '#e0e0e0',
+    
+    // Colores de inputs
+    input: isDarkMode ? '#3d3d3d' : '#ffffff',
+    inputBorder: isDarkMode ? '#555' : '#e0e0e0',
+    placeholder: isDarkMode ? '#808080' : '#999999',
+    
+    // Colores específicos
+    iconContainer: isDarkMode ? '#404040' : '#f8f9fa',
+    
+    // Colores de modal
+    modalOverlay: isDarkMode ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)',
+    modalBackground: isDarkMode ? '#2d2d2d' : '#ffffff',
+    
+    // Colores de estado
+    success: '#4ecdc4',
+    warning: '#ffd93d',
+    error: '#ff6b6b',
+    info: '#54a0ff',
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -84,53 +167,97 @@ const PerfilScreen = ({ navigation }) => {
     Alert.alert('Éxito', 'Perfil actualizado correctamente');
   };
 
+  const getThemeIcon = () => {
+    if (themeMode === 'system') return Smartphone;
+    return themeMode === 'dark' ? Moon : Sun;
+  };
+
+  const getThemeText = () => {
+    if (themeMode === 'system') return 'Seguir sistema';
+    return themeMode === 'dark' ? 'Modo oscuro' : 'Modo claro';
+  };
+
   const StatCard = ({ icon: Icon, title, value, color = '#968ce4' }) => (
-    <View style={[styles.statCard, { borderLeftColor: color }]}>
-      <View style={styles.statIconContainer}>
+    <View style={[styles.statCard, { 
+      borderLeftColor: color,
+      backgroundColor: colors.card,
+      shadowColor: isDarkMode ? '#000' : '#000',
+    }]}>
+      <View style={[styles.statIconContainer, { backgroundColor: colors.iconContainer }]}>
         <Icon size={20 * SCALE} color={color} />
       </View>
       <View style={styles.statContent}>
-        <Text style={styles.statValue}>{value}</Text>
-        <Text style={styles.statTitle}>{title}</Text>
+        <Text style={[styles.statValue, { color: colors.text }]}>{value}</Text>
+        <Text style={[styles.statTitle, { color: colors.textSecondary }]}>{title}</Text>
       </View>
     </View>
   );
 
-  const MenuItem = ({ icon: Icon, title, subtitle, onPress, showArrow = true, color = '#333' }) => (
-    <TouchableOpacity style={styles.menuItem} onPress={onPress}>
+  const MenuItem = ({ icon: Icon, title, subtitle, onPress, showArrow = true, color = '#333', rightComponent }) => (
+    <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]} onPress={onPress}>
       <View style={styles.menuItemLeft}>
         <View style={[styles.menuIcon, { backgroundColor: `${color}15` }]}>
           <Icon size={20 * SCALE} color={color} />
         </View>
         <View style={styles.menuContent}>
-          <Text style={styles.menuTitle}>{title}</Text>
-          {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
+          <Text style={[styles.menuTitle, { color: colors.text }]}>{title}</Text>
+          {subtitle && <Text style={[styles.menuSubtitle, { color: colors.textSecondary }]}>{subtitle}</Text>}
         </View>
       </View>
-      {showArrow && (
+      {rightComponent || (showArrow && (
         <ArrowLeft 
           size={16 * SCALE} 
-          color="#999" 
+          color={colors.textSecondary} 
           style={{ transform: [{ rotate: '180deg' }] }}
         />
+      ))}
+    </TouchableOpacity>
+  );
+
+  const ThemeOption = ({ icon: Icon, title, subtitle, isSelected, onPress }) => (
+    <TouchableOpacity 
+      style={[
+        styles.themeOption, 
+        { 
+          backgroundColor: colors.card,
+          borderColor: isSelected ? colors.primary : colors.border,
+          borderWidth: isSelected ? 2 : 1
+        }
+      ]} 
+      onPress={onPress}
+    >
+      <View style={styles.themeOptionLeft}>
+        <View style={[styles.themeIcon, { backgroundColor: colors.surfaceVariant }]}>
+          <Icon size={20} color={colors.primary} />
+        </View>
+        <View>
+          <Text style={[styles.themeTitle, { color: colors.text }]}>{title}</Text>
+          <Text style={[styles.themeSubtitle, { color: colors.textSecondary }]}>{subtitle}</Text>
+        </View>
+      </View>
+      {isSelected && (
+        <View style={[styles.selectedIndicator, { backgroundColor: colors.primary }]} />
       )}
     </TouchableOpacity>
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { 
+        backgroundColor: colors.background,
+        borderBottomColor: colors.border 
+      }]}>
         <TouchableOpacity 
           onPress={() => navigation.goBack()} 
-          style={styles.backButton}
+          style={[styles.backButton, { backgroundColor: colors.cardCompleted }]}
         >
           <ArrowLeft size={20 * SCALE} color="#968ce4" />
         </TouchableOpacity>
-        <Text style={styles.title}>Mi Perfil</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Mi Perfil</Text>
         <TouchableOpacity 
           onPress={() => setShowEditModal(true)}
-          style={styles.editButton}
+          style={[styles.editButton, { backgroundColor: colors.cardCompleted }]}
         >
           <Edit3 size={20 * SCALE} color="#968ce4" />
         </TouchableOpacity>
@@ -142,9 +269,9 @@ const PerfilScreen = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Header */}
-        <View style={styles.profileHeader}>
+        <View style={[styles.profileHeader, { borderBottomColor: colors.border }]}>
           <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
+            <View style={[styles.avatar, { backgroundColor: colors.cardCompleted }]}>
               <User size={40 * SCALE} color="#968ce4" />
             </View>
             <TouchableOpacity style={styles.cameraButton}>
@@ -153,8 +280,8 @@ const PerfilScreen = ({ navigation }) => {
           </View>
           
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>{userData.nombre} {userData.apellido}</Text>
-            <Text style={styles.userEmail}>{userData.email}</Text>
+            <Text style={[styles.userName, { color: colors.text }]}>{userData.nombre} {userData.apellido}</Text>
+            <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{userData.email}</Text>
             <Text style={styles.userLevel}>Nivel: {userData.nivel}</Text>
           </View>
         </View>
@@ -189,8 +316,8 @@ const PerfilScreen = ({ navigation }) => {
 
         {/* Menu Sections */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Cuenta</Text>
-          <View style={styles.menuContainer}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Cuenta</Text>
+          <View style={[styles.menuContainer, { backgroundColor: colors.surface }]}>
             <MenuItem
               icon={User}
               title="Información Personal"
@@ -209,8 +336,15 @@ const PerfilScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferencias</Text>
-          <View style={styles.menuContainer}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Preferencias</Text>
+          <View style={[styles.menuContainer, { backgroundColor: colors.surface }]}>
+            <MenuItem
+              icon={getThemeIcon()}
+              title="Tema de la aplicación"
+              subtitle={getThemeText()}
+              onPress={() => setShowThemeModal(true)}
+              color={themeMode === 'system' ? "#6c5ce7" : (themeMode === 'dark' ? "#ffd93d" : "#ff9f43")}
+            />
             <MenuItem
               icon={Bell}
               title="Notificaciones"
@@ -228,10 +362,9 @@ const PerfilScreen = ({ navigation }) => {
           </View>
         </View>
 
-
         {/* Logout Section */}
         <View style={styles.section}>
-          <View style={styles.menuContainer}>
+          <View style={[styles.menuContainer, { backgroundColor: colors.surface }]}>
             <MenuItem
               icon={LogOut}
               title="Cerrar Sesión"
@@ -243,47 +376,103 @@ const PerfilScreen = ({ navigation }) => {
         </View>
       </ScrollView>
 
+      {/* Modal de selección de tema */}
+      <Modal
+        visible={showThemeModal}
+        transparent={true}
+        animationType="slide"
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: colors.modalOverlay }]}>
+          <View style={[styles.modalContent, { backgroundColor: colors.modalBackground }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Seleccionar Tema</Text>
+              <TouchableOpacity onPress={() => setShowThemeModal(false)}>
+                <X size={24 * SCALE} color={colors.textTertiary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.themeModalBody}>
+              <ThemeOption
+                icon={Smartphone}
+                title="Seguir sistema"
+                subtitle="Usar el tema del dispositivo"
+                isSelected={themeMode === 'system'}
+                onPress={() => saveThemePreference('system')}
+              />
+              
+              <ThemeOption
+                icon={Sun}
+                title="Modo claro"
+                subtitle="Usar siempre tema claro"
+                isSelected={themeMode === 'light'}
+                onPress={() => saveThemePreference('light')}
+              />
+              
+              <ThemeOption
+                icon={Moon}
+                title="Modo oscuro"
+                subtitle="Usar siempre tema oscuro"
+                isSelected={themeMode === 'dark'}
+                onPress={() => saveThemePreference('dark')}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Edit Profile Modal */}
       <Modal
         visible={showEditModal}
         transparent={true}
         animationType="slide"
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Editar Perfil</Text>
+        <View style={[styles.modalOverlay, { backgroundColor: colors.modalOverlay }]}>
+          <View style={[styles.modalContent, { backgroundColor: colors.modalBackground }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Editar Perfil</Text>
               <TouchableOpacity onPress={() => setShowEditModal(false)}>
                 <Text style={styles.cancelText}>Cancelar</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.modalBody}>
-              <Text style={styles.inputLabel}>Nombre</Text>
+              <Text style={[styles.inputLabel, { color: colors.text }]}>Nombre</Text>
               <TextInput
-                style={styles.modalInput}
+                style={[styles.modalInput, { 
+                  borderColor: colors.borderLight,
+                  backgroundColor: colors.input,
+                  color: colors.text
+                }]}
                 value={editData.nombre}
                 onChangeText={(value) => setEditData(prev => ({ ...prev, nombre: value }))}
                 placeholder="Nombre"
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.placeholder}
               />
 
-              <Text style={styles.inputLabel}>Apellido</Text>
+              <Text style={[styles.inputLabel, { color: colors.text }]}>Apellido</Text>
               <TextInput
-                style={styles.modalInput}
+                style={[styles.modalInput, { 
+                  borderColor: colors.borderLight,
+                  backgroundColor: colors.input,
+                  color: colors.text
+                }]}
                 value={editData.apellido}
                 onChangeText={(value) => setEditData(prev => ({ ...prev, apellido: value }))}
                 placeholder="Apellido"
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.placeholder}
               />
 
-              <Text style={styles.inputLabel}>Email</Text>
+              <Text style={[styles.inputLabel, { color: colors.text }]}>Email</Text>
               <TextInput
-                style={styles.modalInput}
+                style={[styles.modalInput, { 
+                  borderColor: colors.borderLight,
+                  backgroundColor: colors.input,
+                  color: colors.text
+                }]}
                 value={editData.email}
                 onChangeText={(value) => setEditData(prev => ({ ...prev, email: value }))}
                 placeholder="Email"
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.placeholder}
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
@@ -302,7 +491,6 @@ const PerfilScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   header: {
     flexDirection: 'row',
@@ -312,26 +500,22 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingTop: 50 * SCALE,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   backButton: {
     width: 40 * SCALE,
     height: 40 * SCALE,
     borderRadius: 20 * SCALE,
-    backgroundColor: '#f3f0ff',
     alignItems: 'center',
     justifyContent: 'center',
   },
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
   },
   editButton: {
     width: 40 * SCALE,
     height: 40 * SCALE,
     borderRadius: 20 * SCALE,
-    backgroundColor: '#f3f0ff',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -348,7 +532,6 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     paddingBottom: 24,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   avatarContainer: {
     position: 'relative',
@@ -358,7 +541,6 @@ const styles = StyleSheet.create({
     width: 80 * SCALE,
     height: 80 * SCALE,
     borderRadius: 40 * SCALE,
-    backgroundColor: '#f3f0ff',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -381,12 +563,10 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 4,
   },
   userEmail: {
     fontSize: 14,
-    color: '#666',
     marginBottom: 4,
   },
   userLevel: {
@@ -400,12 +580,10 @@ const styles = StyleSheet.create({
   statCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
     borderLeftWidth: 4,
-    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -418,7 +596,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f8f9fa',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -429,12 +606,10 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 2,
   },
   statTitle: {
     fontSize: 12,
-    color: '#666',
   },
   section: {
     marginBottom: 24,
@@ -442,11 +617,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 12,
   },
   menuContainer: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     overflow: 'hidden',
   },
@@ -457,7 +630,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   menuItemLeft: {
     flexDirection: 'row',
@@ -478,41 +650,35 @@ const styles = StyleSheet.create({
   menuTitle: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#333',
     marginBottom: 2,
   },
   menuSubtitle: {
     fontSize: 12,
-    color: '#666',
   },
   // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20 * SCALE,
   },
   modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 40,
+    borderRadius: 16 * SCALE,
+    padding: 20 * SCALE,
+    width: '100%',
     maxHeight: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
-    paddingBottom: 16,
+    marginBottom: 20 * SCALE,
+    paddingBottom: 16 * SCALE,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   cancelText: {
     fontSize: 16,
@@ -525,18 +691,15 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#333',
     marginBottom: 8,
     marginTop: 16,
   },
   modalInput: {
     borderWidth: 1,
-    borderColor: '#e0e0e0',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    backgroundColor: '#fff',
   },
   saveButton: {
     backgroundColor: '#968ce4',
@@ -548,6 +711,44 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Estilos del modal de tema
+  themeModalBody: {
+    paddingVertical: 12,
+  },
+  themeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  themeOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  themeIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  themeTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  themeSubtitle: {
+    fontSize: 12,
+  },
+  selectedIndicator: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
   },
 });
 
