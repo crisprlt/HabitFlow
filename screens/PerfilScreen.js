@@ -9,8 +9,6 @@ import {
   Modal,
   TextInput,
   Dimensions,
-  Switch,
-  useColorScheme
 } from 'react-native';
 import {
   ArrowLeft,
@@ -33,14 +31,13 @@ import {
   Smartphone,
   X
 } from 'lucide-react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from './ThemeContext'; // Importar el hook
 
 const SCALE = 1.2;
 const { width } = Dimensions.get('window');
 
 const PerfilScreen = ({ navigation }) => {
-  const systemColorScheme = useColorScheme();
-  const [themeMode, setThemeMode] = useState('system'); // 'system', 'light', 'dark'
+  const { themeMode, colors, setTheme } = useTheme(); // Usar el contexto
   const [showThemeModal, setShowThemeModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   
@@ -50,8 +47,7 @@ const PerfilScreen = ({ navigation }) => {
     email: 'juan.perez@email.com',
     fechaRegistro: '15 de Enero, 2024',
     habitosCompletados: 127,
-    racha: 15,
-    nivel: 'Principiante'
+    racha: 15
   });
 
   const [editData, setEditData] = useState({
@@ -59,78 +55,6 @@ const PerfilScreen = ({ navigation }) => {
     apellido: userData.apellido,
     email: userData.email
   });
-
-  // Determinar si está en modo oscuro
-  const isDarkMode = themeMode === 'system' ? systemColorScheme === 'dark' : themeMode === 'dark';
-
-  // Cargar preferencia de tema al iniciar
-  useEffect(() => {
-    loadThemePreference();
-  }, []);
-
-  const loadThemePreference = async () => {
-    try {
-      const savedTheme = await AsyncStorage.getItem('perfilScreen_theme');
-      if (savedTheme) {
-        setThemeMode(savedTheme);
-      }
-    } catch (error) {
-      console.log('Error cargando tema:', error);
-    }
-  };
-
-  const saveThemePreference = async (theme) => {
-    try {
-      await AsyncStorage.setItem('perfilScreen_theme', theme);
-      setThemeMode(theme);
-      setShowThemeModal(false);
-    } catch (error) {
-      console.log('Error guardando tema:', error);
-    }
-  };
-
-  // Definir colores según el tema
-  const colors = {
-    // Colores de fondo
-    background: isDarkMode ? '#1a1a1a' : '#ffffff',
-    surface: isDarkMode ? '#2d2d2d' : '#ffffff',
-    surfaceVariant: isDarkMode ? '#3d3d3d' : '#f5f5f5',
-    
-    // Colores de texto
-    text: isDarkMode ? '#ffffff' : '#333333',
-    textSecondary: isDarkMode ? '#b0b0b0' : '#666666',
-    textTertiary: isDarkMode ? '#808080' : '#999999',
-    
-    // Colores principales
-    primary: '#968ce4',
-    primaryVariant: isDarkMode ? '#7b6fd1' : '#968ce4',
-    
-    // Colores de tarjetas
-    card: isDarkMode ? '#2d2d2d' : '#ffffff',
-    cardCompleted: isDarkMode ? '#3d2d4d' : '#f3f0ff',
-    
-    // Colores de bordes
-    border: isDarkMode ? '#404040' : '#f0f0f0',
-    borderLight: isDarkMode ? '#404040' : '#e0e0e0',
-    
-    // Colores de inputs
-    input: isDarkMode ? '#3d3d3d' : '#ffffff',
-    inputBorder: isDarkMode ? '#555' : '#e0e0e0',
-    placeholder: isDarkMode ? '#808080' : '#999999',
-    
-    // Colores específicos
-    iconContainer: isDarkMode ? '#404040' : '#f8f9fa',
-    
-    // Colores de modal
-    modalOverlay: isDarkMode ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)',
-    modalBackground: isDarkMode ? '#2d2d2d' : '#ffffff',
-    
-    // Colores de estado
-    success: '#4ecdc4',
-    warning: '#ffd93d',
-    error: '#ff6b6b',
-    info: '#54a0ff',
-  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -145,7 +69,6 @@ const PerfilScreen = ({ navigation }) => {
           text: 'Cerrar Sesión',
           style: 'destructive',
           onPress: () => {
-            // Aquí puedes agregar lógica para limpiar datos de sesión
             navigation.reset({
               index: 0,
               routes: [{ name: 'Login' }]
@@ -167,6 +90,11 @@ const PerfilScreen = ({ navigation }) => {
     Alert.alert('Éxito', 'Perfil actualizado correctamente');
   };
 
+  const saveThemePreference = async (theme) => {
+    await setTheme(theme);
+    setShowThemeModal(false);
+  };
+
   const getThemeIcon = () => {
     if (themeMode === 'system') return Smartphone;
     return themeMode === 'dark' ? Moon : Sun;
@@ -181,7 +109,7 @@ const PerfilScreen = ({ navigation }) => {
     <View style={[styles.statCard, { 
       borderLeftColor: color,
       backgroundColor: colors.card,
-      shadowColor: isDarkMode ? '#000' : '#000',
+      shadowColor: colors.text,
     }]}>
       <View style={[styles.statIconContainer, { backgroundColor: colors.iconContainer }]}>
         <Icon size={20 * SCALE} color={color} />
@@ -282,7 +210,6 @@ const PerfilScreen = ({ navigation }) => {
           <View style={styles.userInfo}>
             <Text style={[styles.userName, { color: colors.text }]}>{userData.nombre} {userData.apellido}</Text>
             <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{userData.email}</Text>
-            <Text style={styles.userLevel}>Nivel: {userData.nivel}</Text>
           </View>
         </View>
 
@@ -299,12 +226,6 @@ const PerfilScreen = ({ navigation }) => {
             title="Racha Actual"
             value={`${userData.racha} días`}
             color="#ff6b6b"
-          />
-          <StatCard 
-            icon={Calendar}
-            title="Miembro desde"
-            value={userData.fechaRegistro}
-            color="#968ce4"
           />
           <StatCard 
             icon={BarChart3}
@@ -344,20 +265,6 @@ const PerfilScreen = ({ navigation }) => {
               subtitle={getThemeText()}
               onPress={() => setShowThemeModal(true)}
               color={themeMode === 'system' ? "#6c5ce7" : (themeMode === 'dark' ? "#ffd93d" : "#ff9f43")}
-            />
-            <MenuItem
-              icon={Bell}
-              title="Notificaciones"
-              subtitle="Configura recordatorios"
-              onPress={() => Alert.alert('Info', 'Funcionalidad próximamente')}
-              color="#ff9f43"
-            />
-            <MenuItem
-              icon={Settings}
-              title="Configuración"
-              subtitle="Ajustes de la aplicación"
-              onPress={() => Alert.alert('Info', 'Funcionalidad próximamente')}
-              color="#666"
             />
           </View>
         </View>
@@ -431,7 +338,7 @@ const PerfilScreen = ({ navigation }) => {
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>Editar Perfil</Text>
               <TouchableOpacity onPress={() => setShowEditModal(false)}>
-                <Text style={styles.cancelText}>Cancelar</Text>
+                <Text style={[styles.cancelText, { color: colors.primary }]}>Cancelar</Text>
               </TouchableOpacity>
             </View>
 
@@ -478,7 +385,7 @@ const PerfilScreen = ({ navigation }) => {
               />
             </View>
 
-            <TouchableOpacity style={styles.saveButton} onPress={handleSaveProfile}>
+            <TouchableOpacity style={[styles.saveButton, { backgroundColor: colors.primary }]} onPress={handleSaveProfile}>
               <Text style={styles.saveButtonText}>Guardar Cambios</Text>
             </TouchableOpacity>
           </View>
@@ -488,6 +395,7 @@ const PerfilScreen = ({ navigation }) => {
   );
 };
 
+// Los estilos se mantienen igual, solo removimos las referencias a colors específicos
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -655,7 +563,6 @@ const styles = StyleSheet.create({
   menuSubtitle: {
     fontSize: 12,
   },
-  // Modal Styles
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
@@ -682,7 +589,6 @@ const styles = StyleSheet.create({
   },
   cancelText: {
     fontSize: 16,
-    color: '#968ce4',
     fontWeight: '500',
   },
   modalBody: {
@@ -702,7 +608,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   saveButton: {
-    backgroundColor: '#968ce4',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -712,7 +617,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  // Estilos del modal de tema
   themeModalBody: {
     paddingVertical: 12,
   },

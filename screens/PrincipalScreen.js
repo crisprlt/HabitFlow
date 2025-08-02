@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,12 +11,10 @@ import {
   Platform,
   Modal,
   Clipboard,
-  useColorScheme
 } from 'react-native';
 import {
   Plus,
   Calendar,
-  TrendingUp,
   Target,
   CheckCircle2,
   Circle,
@@ -31,105 +29,14 @@ import {
   X,
   User,
   Copy,
-  Check,
-  Moon,
-  Sun,
-  Smartphone
+  Check
 } from 'lucide-react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from './ThemeContext'; // Importar el hook del contexto
 
 const SCALE = 1.2;
 
 const PrincipalScreen = ({ navigation }) => {
-  const systemColorScheme = useColorScheme();
-  const [themeMode, setThemeMode] = useState('system'); // 'system', 'light', 'dark'
-  const [showThemeModal, setShowThemeModal] = useState(false);
-
-  // Determinar si está en modo oscuro
-  const isDarkMode = themeMode === 'system' ? systemColorScheme === 'dark' : themeMode === 'dark';
-
-  // Cargar preferencia de tema al iniciar
-  useEffect(() => {
-    loadThemePreference();
-  }, []);
-
-  const loadThemePreference = async () => {
-    try {
-      const savedTheme = await AsyncStorage.getItem('principalScreen_theme');
-      if (savedTheme) {
-        setThemeMode(savedTheme);
-      }
-    } catch (error) {
-      console.log('Error cargando tema:', error);
-    }
-  };
-
-  const saveThemePreference = async (theme) => {
-    try {
-      await AsyncStorage.setItem('principalScreen_theme', theme);
-      setThemeMode(theme);
-      setShowThemeModal(false);
-    } catch (error) {
-      console.log('Error guardando tema:', error);
-    }
-  };
-
-  // Definir colores según el tema
-  const colors = {
-    // Colores de fondo
-    background: isDarkMode ? '#1a1a1a' : '#ffffff',
-    surface: isDarkMode ? '#2d2d2d' : '#ffffff',
-    surfaceVariant: isDarkMode ? '#3d3d3d' : '#f5f5f5',
-    
-    // Colores de texto
-    text: isDarkMode ? '#ffffff' : '#333333',
-    textSecondary: isDarkMode ? '#b0b0b0' : '#666666',
-    textTertiary: isDarkMode ? '#808080' : '#999999',
-    
-    // Colores principales
-    primary: '#968ce4',
-    primaryVariant: isDarkMode ? '#7b6fd1' : '#968ce4',
-    
-    // Colores de tarjetas
-    card: isDarkMode ? '#2d2d2d' : '#ffffff',
-    cardCompleted: isDarkMode ? '#3d2d4d' : '#f3f0ff',
-    
-    // Colores de bordes
-    border: isDarkMode ? '#404040' : '#ddd',
-    borderLight: isDarkMode ? '#404040' : '#e0e0e0',
-    borderCompleted: isDarkMode ? '#5d4d6d' : '#e0e0ff',
-    
-    // Colores de inputs
-    input: isDarkMode ? '#3d3d3d' : '#ffffff',
-    inputBorder: isDarkMode ? '#555' : '#e0e0e0',
-    inputBackground: isDarkMode ? '#2d2d2d' : '#f8f9fa',
-    placeholder: isDarkMode ? '#808080' : '#999999',
-    
-    // Colores de navegación
-    bottomNavBg: isDarkMode ? '#2d2d2d' : '#ffffff',
-    bottomNavBorder: isDarkMode ? '#404040' : '#ddd',
-    navIcon: isDarkMode ? '#404040' : '#eee',
-    navIconActive: '#968ce4',
-    navText: isDarkMode ? '#b0b0b0' : '#888',
-    navTextActive: '#968ce4',
-    
-    // Colores específicos
-    progressBg: isDarkMode ? '#404040' : '#fff',
-    progressFill: '#968ce4',
-    categoryBg: isDarkMode ? '#404040' : '#eee',
-    iconContainer: isDarkMode ? '#404040' : '#eee',
-    
-    // Colores de modal
-    modalOverlay: isDarkMode ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)',
-    modalBackground: isDarkMode ? '#2d2d2d' : '#ffffff',
-    
-    // Colores de estado
-    success: '#4ecdc4',
-    warning: '#ffd93d',
-    error: '#ff6b6b',
-    info: '#54a0ff',
-    streak: '#ff9500',
-  };
+  const { colors } = useTheme(); // Solo necesitamos los colores
 
   const [habits, setHabits] = useState([
     {
@@ -218,22 +125,6 @@ const PrincipalScreen = ({ navigation }) => {
     }
   };
 
-  // Función para eliminar una nota
-  const deleteNote = (noteId) => {
-    Alert.alert(
-      'Eliminar nota',
-      '¿Estás seguro de que quieres eliminar esta nota?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Eliminar', 
-          style: 'destructive',
-          onPress: () => setNotes(prev => prev.filter(note => note.id !== noteId))
-        }
-      ]
-    );
-  };
-
   // Función para copiar nota al portapapeles
   const copyNote = async (note) => {
     try {
@@ -277,16 +168,6 @@ const PrincipalScreen = ({ navigation }) => {
     setEditNoteText('');
   };
 
-  const getThemeIcon = () => {
-    if (themeMode === 'system') return Smartphone;
-    return themeMode === 'dark' ? Moon : Sun;
-  };
-
-  const getThemeText = () => {
-    if (themeMode === 'system') return 'Seguir sistema';
-    return themeMode === 'dark' ? 'Modo oscuro' : 'Modo claro';
-  };
-
   const completedHabits = habits.filter(h => h.completed).length;
   const totalHabits = habits.length;
   const completionPercentage = Math.round((completedHabits / totalHabits) * 100);
@@ -297,33 +178,6 @@ const PrincipalScreen = ({ navigation }) => {
     month: 'long',
     day: 'numeric'
   });
-
-  const ThemeOption = ({ icon: Icon, title, subtitle, isSelected, onPress }) => (
-    <TouchableOpacity 
-      style={[
-        styles.themeOption, 
-        { 
-          backgroundColor: colors.card,
-          borderColor: isSelected ? colors.primary : colors.border,
-          borderWidth: isSelected ? 2 : 1
-        }
-      ]} 
-      onPress={onPress}
-    >
-      <View style={styles.themeOptionLeft}>
-        <View style={[styles.themeIcon, { backgroundColor: colors.surfaceVariant }]}>
-          <Icon size={24} color={colors.primary} />
-        </View>
-        <View>
-          <Text style={[styles.themeTitle, { color: colors.text }]}>{title}</Text>
-          <Text style={[styles.themeSubtitle, { color: colors.textSecondary }]}>{subtitle}</Text>
-        </View>
-      </View>
-      {isSelected && (
-        <View style={[styles.selectedIndicator, { backgroundColor: colors.primary }]} />
-      )}
-    </TouchableOpacity>
-  );
 
   return (
     <KeyboardAvoidingView 
@@ -337,26 +191,18 @@ const PrincipalScreen = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
       >
 
-        {/* Header con botón de tema */}
+        {/* Header */}
         <View style={styles.header}>
           <View>
             <Text style={[styles.title, { color: colors.primary }]}>HabitFlow</Text>
             <Text style={[styles.date, { color: colors.textSecondary }]}>{today}</Text>
           </View>
-          <View style={styles.headerIcons}>
-            <TouchableOpacity
-              style={[styles.themeButton, { backgroundColor: colors.cardCompleted }]}
-              onPress={() => setShowThemeModal(true)}
-            >
-              {React.createElement(getThemeIcon(), { size: 20 * SCALE, color: colors.primary })}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.addButton, { backgroundColor: colors.primary }]}
-              onPress={() => navigation.navigate('AddHabit')}
-            >
-              <Plus size={20 * SCALE} color="#fff" />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={[styles.addButton, { backgroundColor: colors.primary }]}
+            onPress={() => navigation.navigate('AddHabit')}
+          >
+            <Plus size={20 * SCALE} color="#fff" />
+          </TouchableOpacity>
         </View>
 
         {/* Progress */}
@@ -365,8 +211,8 @@ const PrincipalScreen = ({ navigation }) => {
             <Text style={[styles.progressTitle, { color: colors.text }]}>Progreso de Hoy</Text>
             <Text style={[styles.progressValue, { color: colors.primary }]}>{completionPercentage}%</Text>
           </View>
-          <View style={[styles.progressBarBackground, { backgroundColor: colors.progressBg }]}>
-            <View style={[styles.progressBarFill, { backgroundColor: colors.progressFill, width: `${completionPercentage}%` }]} />
+          <View style={[styles.progressBarBackground, { backgroundColor: colors.surfaceVariant }]}>
+            <View style={[styles.progressBarFill, { backgroundColor: colors.primary, width: `${completionPercentage}%` }]} />
           </View>
           <Text style={[styles.progressText, { color: colors.textSecondary }]}>
             {completedHabits} de {totalHabits} hábitos completados
@@ -396,7 +242,7 @@ const PrincipalScreen = ({ navigation }) => {
                 },
                 habit.completed && { 
                   backgroundColor: colors.cardCompleted, 
-                  borderColor: colors.borderCompleted 
+                  borderColor: colors.border 
                 }
               ]}
             >
@@ -410,7 +256,7 @@ const PrincipalScreen = ({ navigation }) => {
                 </TouchableOpacity>
                 <View style={styles.habitContent}>
                   <View style={styles.habitTopRow}>
-                    <View style={[styles.iconContainer, { backgroundColor: colors.iconContainer }]}>
+                    <View style={[styles.iconContainer, { backgroundColor: colors.surfaceVariant }]}>
                       <Icon size={16 * SCALE} color={habit.completed ? colors.primary : colors.textSecondary} />
                     </View>
                     <Text style={[
@@ -425,12 +271,12 @@ const PrincipalScreen = ({ navigation }) => {
                   <View style={styles.habitDetails}>
                     <Text style={[styles.category, { 
                       color: colors.textSecondary, 
-                      backgroundColor: colors.categoryBg 
+                      backgroundColor: colors.surfaceVariant 
                     }]}>
                       {habit.category}
                     </Text>
                     <View style={styles.streakRow}>
-                      <Flame size={12 * SCALE} color={colors.streak} />
+                      <Flame size={12 * SCALE} color={colors.warning} />
                       <Text style={[styles.streakText, { color: colors.text }]}>{habit.streak}</Text>
                     </View>
                     {habit.target > 1 && (
@@ -465,11 +311,11 @@ const PrincipalScreen = ({ navigation }) => {
           </View>
           
           {/* Input para nueva nota */}
-          <View style={[styles.newNoteContainer, { backgroundColor: colors.inputBackground }]}>
+          <View style={[styles.newNoteContainer, { backgroundColor: colors.surfaceVariant }]}>
             <TextInput
               style={[styles.noteInput, { 
                 backgroundColor: colors.input,
-                borderColor: colors.inputBorder,
+                borderColor: colors.border,
                 color: colors.text
               }]}
               value={newNote}
@@ -535,50 +381,6 @@ const PrincipalScreen = ({ navigation }) => {
         <View style={{ height: 120 * SCALE }} />
       </ScrollView>
 
-      {/* Modal de selección de tema */}
-      <Modal
-        visible={showThemeModal}
-        transparent={true}
-        animationType="slide"
-      >
-        <View style={[styles.modalOverlay, { backgroundColor: colors.modalOverlay }]}>
-          <View style={[styles.modalContent, { backgroundColor: colors.modalBackground }]}>
-            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Seleccionar Tema</Text>
-              <TouchableOpacity onPress={() => setShowThemeModal(false)}>
-                <X size={24 * SCALE} color={colors.textTertiary} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.themeModalBody}>
-              <ThemeOption
-                icon={Smartphone}
-                title="Seguir sistema"
-                subtitle="Usar el tema del teléfono"
-                isSelected={themeMode === 'system'}
-                onPress={() => saveThemePreference('system')}
-              />
-              
-              <ThemeOption
-                icon={Sun}
-                title="Modo claro"
-                subtitle="Usar siempre tema claro"
-                isSelected={themeMode === 'light'}
-                onPress={() => saveThemePreference('light')}
-              />
-              
-              <ThemeOption
-                icon={Moon}
-                title="Modo oscuro"
-                subtitle="Usar siempre tema oscuro"
-                isSelected={themeMode === 'dark'}
-                onPress={() => saveThemePreference('dark')}
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
-
       {/* Modal de edición */}
       <Modal
         visible={showEditModal}
@@ -599,7 +401,7 @@ const PrincipalScreen = ({ navigation }) => {
             
             <TextInput
               style={[styles.editInput, { 
-                borderColor: colors.inputBorder,
+                borderColor: colors.border,
                 backgroundColor: colors.input,
                 color: colors.text
               }]}
@@ -633,8 +435,8 @@ const PrincipalScreen = ({ navigation }) => {
 
       {/* Bottom Navigation */}
       <View style={[styles.bottomNav, { 
-        backgroundColor: colors.bottomNavBg,
-        borderTopColor: colors.bottomNavBorder
+        backgroundColor: colors.surface,
+        borderTopColor: colors.border
       }]}>
         <NavItem icon={Target} label="Hábitos" active colors={colors} />
         <NavItem
@@ -675,13 +477,13 @@ const NavItem = ({ icon: Icon, label, active, onPress, colors }) => (
   <TouchableOpacity style={styles.navItem} onPress={onPress}>
     <View style={[
       styles.navIcon, 
-      { backgroundColor: active ? colors.navIconActive : colors.navIcon }
+      { backgroundColor: active ? colors.primary : colors.surfaceVariant }
     ]}>
-      <Icon size={16 * SCALE} color={active ? '#fff' : colors.navText} />
+      <Icon size={16 * SCALE} color={active ? '#fff' : colors.textSecondary} />
     </View>
     <Text style={[
       styles.navText, 
-      { color: active ? colors.navTextActive : colors.navText }
+      { color: active ? colors.primary : colors.textSecondary }
     ]}>
       {label}
     </Text>
@@ -709,18 +511,6 @@ const styles = StyleSheet.create({
   date: {
     fontSize: 14 * SCALE,
     textTransform: 'capitalize',
-  },
-  headerIcons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8 * SCALE,
-  },
-  themeButton: {
-    width: 40 * SCALE,
-    height: 40 * SCALE,
-    borderRadius: 20 * SCALE,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   addButton: {
     width: 40 * SCALE,
@@ -845,7 +635,6 @@ const styles = StyleSheet.create({
     height: 6 * SCALE,
     borderRadius: 3 * SCALE,
   },
-  // Estilos para la sección de notas
   notesSection: {
     marginTop: 20 * SCALE,
   },
@@ -925,7 +714,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginLeft: 4 * SCALE,
   },
-  // Estilos del modal
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
@@ -988,44 +776,6 @@ const styles = StyleSheet.create({
     fontSize: 16 * SCALE,
     color: '#fff',
     fontWeight: '600',
-  },
-  // Estilos del modal de tema
-  themeModalBody: {
-    paddingVertical: 16,
-  },
-  themeOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  themeOptionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  themeIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  themeTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  themeSubtitle: {
-    fontSize: 13,
-  },
-  selectedIndicator: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
   },
   bottomNav: {
     flexDirection: 'row',

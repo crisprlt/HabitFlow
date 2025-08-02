@@ -25,11 +25,14 @@ import {
     CheckCircle2,
     ArrowLeft
 } from 'lucide-react-native';
+import { useTheme } from './ThemeContext'; // ✅ Importar el hook del contexto
 
 const SCALE = 1.2;
 const { height: screenHeight } = Dimensions.get('window');
 
 const TodoScreen = ({ navigation }) => {
+    const { colors } = useTheme(); // ✅ Usar el contexto de tema
+    
     const [areas, setAreas] = useState([
         {
             id: 1,
@@ -78,7 +81,7 @@ const TodoScreen = ({ navigation }) => {
     const [editingTask, setEditingTask] = useState(null);
     const [editTaskText, setEditTaskText] = useState('');
 
-    const colors = [
+    const availableColors = [
         '#968ce4', '#ff6b6b', '#4ecdc4', '#45b7d1', 
         '#96ceb4', '#ffd93d', '#ff9ff3', '#54a0ff',
         '#5f27cd', '#00d2d3', '#ff9f43', '#10ac84'
@@ -90,9 +93,9 @@ const TodoScreen = ({ navigation }) => {
     ];
 
     const priorities = [
-        { value: 'alta', label: 'Alta', color: '#ff4757' },
-        { value: 'media', label: 'Media', color: '#ffa502' },
-        { value: 'baja', label: 'Baja', color: '#2ed573' }
+        { value: 'alta', label: 'Alta', color: colors.priorityHigh || '#ff4757' },
+        { value: 'media', label: 'Media', color: colors.priorityMedium || '#ffa502' },
+        { value: 'baja', label: 'Baja', color: colors.priorityLow || '#2ed573' }
     ];
 
     const createNewArea = () => {
@@ -226,7 +229,11 @@ const TodoScreen = ({ navigation }) => {
 
         if (isEditing) {
             return (
-                <View key={task.id} style={[styles.taskItem, styles.editingTaskItem]}>
+                <View key={task.id} style={[
+                    styles.taskItem, 
+                    styles.editingTaskItem,
+                    { backgroundColor: colors.surfaceVariant }
+                ]}>
                     <TouchableOpacity 
                         style={styles.taskCheckbox}
                         onPress={() => toggleTask(area.id, task.id)}
@@ -239,7 +246,11 @@ const TodoScreen = ({ navigation }) => {
                     </TouchableOpacity>
                     
                     <TextInput
-                        style={styles.editTaskInput}
+                        style={[styles.editTaskInput, {
+                            backgroundColor: colors.input,
+                            borderColor: colors.primary,
+                            color: colors.text
+                        }]}
                         value={editTaskText}
                         onChangeText={setEditTaskText}
                         autoFocus
@@ -248,20 +259,21 @@ const TodoScreen = ({ navigation }) => {
                         onSubmitEditing={saveTaskEdit}
                         returnKeyType="done"
                         blurOnSubmit={true}
+                        placeholderTextColor={colors.placeholder}
                     />
                     
                     <TouchableOpacity 
                         style={styles.saveTaskButton}
                         onPress={saveTaskEdit}
                     >
-                        <Check size={16 * SCALE} color="#4CAF50" />
+                        <Check size={16 * SCALE} color={colors.success} />
                     </TouchableOpacity>
                     
                     <TouchableOpacity 
                         style={styles.cancelTaskButton}
                         onPress={cancelTaskEdit}
                     >
-                        <X size={16 * SCALE} color="#999" />
+                        <X size={16 * SCALE} color={colors.textSecondary} />
                     </TouchableOpacity>
                 </View>
             );
@@ -270,6 +282,7 @@ const TodoScreen = ({ navigation }) => {
         return (
             <View key={task.id} style={[
                 styles.taskItem, 
+                { borderBottomColor: colors.border },
                 isCompleted && styles.completedTask
             ]}>
                 <TouchableOpacity 
@@ -289,7 +302,8 @@ const TodoScreen = ({ navigation }) => {
                 >
                     <Text style={[
                         styles.taskText, 
-                        isCompleted && styles.completedTaskText
+                        { color: colors.text },
+                        isCompleted && { ...styles.completedTaskText, color: colors.textSecondary }
                     ]}>
                         {task.text}
                     </Text>
@@ -304,7 +318,7 @@ const TodoScreen = ({ navigation }) => {
                     style={styles.deleteTaskButton}
                     onPress={() => deleteTask(area.id, task.id)}
                 >
-                    <X size={14 * SCALE} color="#999" />
+                    <X size={14 * SCALE} color={colors.textSecondary} />
                 </TouchableOpacity>
             </View>
         );
@@ -316,14 +330,21 @@ const TodoScreen = ({ navigation }) => {
         const completedTasks = area.tasks.filter(task => task.completed);
 
         return (
-            <View key={area.id} style={[styles.areaCard, { borderLeftColor: area.color }]}>
+            <View key={area.id} style={[
+                styles.areaCard, 
+                { 
+                    backgroundColor: colors.card,
+                    borderLeftColor: area.color,
+                    shadowColor: colors.text
+                }
+            ]}>
                 {/* Header del área */}
                 <View style={styles.areaHeader}>
                     <View style={styles.areaInfo}>
                         <Text style={styles.areaEmoji}>{area.emoji}</Text>
                         <View style={styles.areaTitleContainer}>
-                            <Text style={styles.areaTitle}>{area.name}</Text>
-                            <Text style={styles.areaStats}>
+                            <Text style={[styles.areaTitle, { color: colors.text }]}>{area.name}</Text>
+                            <Text style={[styles.areaStats, { color: colors.textSecondary }]}>
                                 {stats.completed}/{stats.total} tareas • {Math.round(stats.percentage)}%
                             </Text>
                         </View>
@@ -332,13 +353,13 @@ const TodoScreen = ({ navigation }) => {
                         style={styles.areaMenuButton}
                         onPress={() => deleteArea(area.id)}
                     >
-                        <Trash2 size={16 * SCALE} color="#999" />
+                        <Trash2 size={16 * SCALE} color={colors.textSecondary} />
                     </TouchableOpacity>
                 </View>
 
                 {/* Barra de progreso */}
                 <View style={styles.progressBarContainer}>
-                    <View style={styles.progressBarBackground}>
+                    <View style={[styles.progressBarBackground, { backgroundColor: colors.border }]}>
                         <View 
                             style={[
                                 styles.progressBarFill, 
@@ -356,13 +377,13 @@ const TodoScreen = ({ navigation }) => {
 
                 {/* Tareas completadas (colapsables) */}
                 {completedTasks.length > 0 && (
-                    <View style={styles.completedSection}>
-                        <Text style={styles.completedSectionTitle}>
+                    <View style={[styles.completedSection, { borderTopColor: colors.border }]}>
+                        <Text style={[styles.completedSectionTitle, { color: colors.textSecondary }]}>
                             Completadas ({completedTasks.length})
                         </Text>
                         {completedTasks.slice(0, 3).map(task => renderTaskItem(task, area, true))}
                         {completedTasks.length > 3 && (
-                            <Text style={styles.moreTasksText}>
+                            <Text style={[styles.moreTasksText, { color: colors.textSecondary }]}>
                                 +{completedTasks.length - 3} más...
                             </Text>
                         )}
@@ -387,18 +408,21 @@ const TodoScreen = ({ navigation }) => {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
             {/* Header */}
-            <View style={styles.header}>
+            <View style={[styles.header, { 
+                backgroundColor: colors.surface,
+                borderBottomColor: colors.border
+            }]}>
                 <TouchableOpacity 
-                    style={styles.backButton}
+                    style={[styles.backButton, { backgroundColor: colors.cardCompleted }]}
                     onPress={() => navigation.goBack()}
                 >
-                    <ArrowLeft size={24 * SCALE} color="#333" />
+                    <ArrowLeft size={24 * SCALE} color={colors.primary} />
                 </TouchableOpacity>
-                <Text style={styles.title}>Mis Áreas</Text>
+                <Text style={[styles.title, { color: colors.text }]}>Mis Áreas</Text>
                 <TouchableOpacity 
-                    style={styles.addAreaButton}
+                    style={[styles.addAreaButton, { backgroundColor: colors.primary }]}
                     onPress={() => setShowNewAreaModal(true)}
                 >
                     <FolderPlus size={24 * SCALE} color="#fff" />
@@ -411,9 +435,11 @@ const TodoScreen = ({ navigation }) => {
                 
                 {areas.length === 0 && (
                     <View style={styles.emptyState}>
-                        <ListTodo size={48 * SCALE} color="#ddd" />
-                        <Text style={styles.emptyStateTitle}>No hay áreas creadas</Text>
-                        <Text style={styles.emptyStateText}>
+                        <ListTodo size={48 * SCALE} color={colors.textTertiary} />
+                        <Text style={[styles.emptyStateTitle, { color: colors.textSecondary }]}>
+                            No hay áreas creadas
+                        </Text>
+                        <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
                             Crea tu primera área para organizar tus tareas
                         </Text>
                     </View>
@@ -429,15 +455,15 @@ const TodoScreen = ({ navigation }) => {
                 animationType="slide"
             >
                 <KeyboardAvoidingView 
-                    style={styles.modalOverlay}
+                    style={[styles.modalOverlay, { backgroundColor: colors.modalOverlay }]}
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
                 >
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Nueva Área</Text>
+                    <View style={[styles.modalContent, { backgroundColor: colors.modalBackground }]}>
+                        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+                            <Text style={[styles.modalTitle, { color: colors.text }]}>Nueva Área</Text>
                             <TouchableOpacity onPress={() => setShowNewAreaModal(false)}>
-                                <X size={24 * SCALE} color="#999" />
+                                <X size={24 * SCALE} color={colors.textSecondary} />
                             </TouchableOpacity>
                         </View>
 
@@ -446,24 +472,32 @@ const TodoScreen = ({ navigation }) => {
                             showsVerticalScrollIndicator={false}
                             keyboardShouldPersistTaps="handled"
                         >
-                            <Text style={styles.inputLabel}>Nombre del área</Text>
+                            <Text style={[styles.inputLabel, { color: colors.text }]}>Nombre del área</Text>
                             <TextInput
-                                style={styles.modalInput}
+                                style={[styles.modalInput, {
+                                    borderColor: colors.border,
+                                    backgroundColor: colors.input,
+                                    color: colors.text
+                                }]}
                                 value={newAreaName}
                                 onChangeText={setNewAreaName}
                                 placeholder="Ej: Trabajo, Personal, Estudios..."
-                                placeholderTextColor="#999"
+                                placeholderTextColor={colors.placeholder}
                                 returnKeyType="done"
                             />
 
-                            <Text style={styles.inputLabel}>Emoji</Text>
+                            <Text style={[styles.inputLabel, { color: colors.text }]}>Emoji</Text>
                             <ScrollView horizontal style={styles.emojiContainer} showsHorizontalScrollIndicator={false}>
                                 {emojis.map((emoji, index) => (
                                     <TouchableOpacity
                                         key={index}
                                         style={[
                                             styles.emojiButton,
-                                            newAreaEmoji === emoji && styles.selectedEmoji
+                                            { backgroundColor: colors.surfaceVariant },
+                                            newAreaEmoji === emoji && { 
+                                                backgroundColor: colors.primary,
+                                                borderColor: colors.primary 
+                                            }
                                         ]}
                                         onPress={() => setNewAreaEmoji(emoji)}
                                     >
@@ -472,15 +506,18 @@ const TodoScreen = ({ navigation }) => {
                                 ))}
                             </ScrollView>
 
-                            <Text style={styles.inputLabel}>Color</Text>
+                            <Text style={[styles.inputLabel, { color: colors.text }]}>Color</Text>
                             <View style={styles.colorContainer}>
-                                {colors.map((color, index) => (
+                                {availableColors.map((color, index) => (
                                     <TouchableOpacity
                                         key={index}
                                         style={[
                                             styles.colorButton,
                                             { backgroundColor: color },
-                                            newAreaColor === color && styles.selectedColor
+                                            newAreaColor === color && { 
+                                                borderColor: colors.text,
+                                                borderWidth: 3 
+                                            }
                                         ]}
                                         onPress={() => setNewAreaColor(color)}
                                     />
@@ -488,12 +525,14 @@ const TodoScreen = ({ navigation }) => {
                             </View>
                         </ScrollView>
 
-                        <View style={styles.modalButtons}>
+                        <View style={[styles.modalButtons, { borderTopColor: colors.border }]}>
                             <TouchableOpacity 
-                                style={styles.cancelButton}
+                                style={[styles.cancelButton, { backgroundColor: colors.surfaceVariant }]}
                                 onPress={() => setShowNewAreaModal(false)}
                             >
-                                <Text style={styles.cancelButtonText}>Cancelar</Text>
+                                <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>
+                                    Cancelar
+                                </Text>
                             </TouchableOpacity>
                             <TouchableOpacity 
                                 style={[styles.createButton, { backgroundColor: newAreaColor }]}
@@ -513,17 +552,17 @@ const TodoScreen = ({ navigation }) => {
                 animationType="slide"
             >
                 <KeyboardAvoidingView 
-                    style={styles.modalOverlay}
+                    style={[styles.modalOverlay, { backgroundColor: colors.modalOverlay }]}
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
                 >
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>
+                    <View style={[styles.modalContent, { backgroundColor: colors.modalBackground }]}>
+                        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+                            <Text style={[styles.modalTitle, { color: colors.text }]}>
                                 Nueva Tarea - {selectedArea?.name}
                             </Text>
                             <TouchableOpacity onPress={() => setShowNewTaskModal(false)}>
-                                <X size={24 * SCALE} color="#999" />
+                                <X size={24 * SCALE} color={colors.textSecondary} />
                             </TouchableOpacity>
                         </View>
 
@@ -532,13 +571,17 @@ const TodoScreen = ({ navigation }) => {
                             showsVerticalScrollIndicator={false}
                             keyboardShouldPersistTaps="handled"
                         >
-                            <Text style={styles.inputLabel}>Descripción de la tarea</Text>
+                            <Text style={[styles.inputLabel, { color: colors.text }]}>Descripción de la tarea</Text>
                             <TextInput
-                                style={[styles.modalInput, styles.multilineInput]}
+                                style={[styles.modalInput, styles.multilineInput, {
+                                    borderColor: colors.border,
+                                    backgroundColor: colors.input,
+                                    color: colors.text
+                                }]}
                                 value={newTaskText}
                                 onChangeText={setNewTaskText}
                                 placeholder="¿Qué necesitas hacer?"
-                                placeholderTextColor="#999"
+                                placeholderTextColor={colors.placeholder}
                                 multiline
                                 numberOfLines={3}
                                 textAlignVertical="top"
@@ -546,7 +589,7 @@ const TodoScreen = ({ navigation }) => {
                                 blurOnSubmit={true}
                             />
 
-                            <Text style={styles.inputLabel}>Prioridad</Text>
+                            <Text style={[styles.inputLabel, { color: colors.text }]}>Prioridad</Text>
                             <View style={styles.priorityContainer}>
                                 {priorities.map((priority) => (
                                     <TouchableOpacity
@@ -572,12 +615,14 @@ const TodoScreen = ({ navigation }) => {
                             </View>
                         </ScrollView>
 
-                        <View style={styles.modalButtons}>
+                        <View style={[styles.modalButtons, { borderTopColor: colors.border }]}>
                             <TouchableOpacity 
-                                style={styles.cancelButton}
+                                style={[styles.cancelButton, { backgroundColor: colors.surfaceVariant }]}
                                 onPress={() => setShowNewTaskModal(false)}
                             >
-                                <Text style={styles.cancelButtonText}>Cancelar</Text>
+                                <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>
+                                    Cancelar
+                                </Text>
                             </TouchableOpacity>
                             <TouchableOpacity 
                                 style={[styles.createButton, { backgroundColor: selectedArea?.color }]}
@@ -596,7 +641,6 @@ const TodoScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f8f9fa',
     },
     header: {
         flexDirection: 'row',
@@ -605,22 +649,18 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20 * SCALE,
         paddingTop: 50 * SCALE,
         paddingBottom: 20 * SCALE,
-        backgroundColor: '#fff',
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
     },
-   backButton: {
+    backButton: {
         width: 40 * SCALE,
         height: 40 * SCALE,
         borderRadius: 20 * SCALE,
-        backgroundColor: '#f3f0ff',
         alignItems: 'center',
         justifyContent: 'center',
     },
     title: {
         fontSize: 24 * SCALE,
         fontWeight: 'bold',
-        color: '#333',
         flex: 1,
         textAlign: 'center',
         marginHorizontal: 10 * SCALE,
@@ -629,7 +669,6 @@ const styles = StyleSheet.create({
         width: 44 * SCALE,
         height: 44 * SCALE,
         borderRadius: 22 * SCALE,
-        backgroundColor: '#968ce4',
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -638,13 +677,11 @@ const styles = StyleSheet.create({
         padding: 16 * SCALE,
     },
     areaCard: {
-        backgroundColor: '#fff',
         borderRadius: 12 * SCALE,
         padding: 16 * SCALE,
         marginBottom: 16 * SCALE,
         borderLeftWidth: 4,
         elevation: 2,
-        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
@@ -670,11 +707,9 @@ const styles = StyleSheet.create({
     areaTitle: {
         fontSize: 18 * SCALE,
         fontWeight: 'bold',
-        color: '#333',
     },
     areaStats: {
         fontSize: 12 * SCALE,
-        color: '#666',
         marginTop: 2 * SCALE,
     },
     areaMenuButton: {
@@ -685,7 +720,6 @@ const styles = StyleSheet.create({
     },
     progressBarBackground: {
         height: 4 * SCALE,
-        backgroundColor: '#f0f0f0',
         borderRadius: 2 * SCALE,
         overflow: 'hidden',
     },
@@ -698,10 +732,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 8 * SCALE,
         borderBottomWidth: 1,
-        borderBottomColor: '#f5f5f5',
     },
     editingTaskItem: {
-        backgroundColor: '#f8f9fa',
         borderRadius: 8 * SCALE,
         marginVertical: 2 * SCALE,
         paddingHorizontal: 8 * SCALE,
@@ -715,19 +747,15 @@ const styles = StyleSheet.create({
     },
     taskText: {
         fontSize: 14 * SCALE,
-        color: '#333',
     },
     editTaskInput: {
         flex: 1,
         fontSize: 14 * SCALE,
-        color: '#333',
-        backgroundColor: '#fff',
         borderRadius: 6 * SCALE,
         paddingHorizontal: 8 * SCALE,
         paddingVertical: 6 * SCALE,
         marginRight: 8 * SCALE,
         borderWidth: 1,
-        borderColor: '#968ce4',
         minHeight: 32 * SCALE,
     },
     saveTaskButton: {
@@ -750,11 +778,9 @@ const styles = StyleSheet.create({
         marginTop: 12 * SCALE,
         paddingTop: 12 * SCALE,
         borderTopWidth: 1,
-        borderTopColor: '#f0f0f0',
     },
     completedSectionTitle: {
         fontSize: 12 * SCALE,
-        color: '#999',
         fontWeight: '500',
         marginBottom: 8 * SCALE,
     },
@@ -763,11 +789,9 @@ const styles = StyleSheet.create({
     },
     completedTaskText: {
         textDecorationLine: 'line-through',
-        color: '#999',
     },
     moreTasksText: {
         fontSize: 12 * SCALE,
-        color: '#999',
         fontStyle: 'italic',
         textAlign: 'center',
         marginTop: 8 * SCALE,
@@ -795,30 +819,26 @@ const styles = StyleSheet.create({
     emptyStateTitle: {
         fontSize: 18 * SCALE,
         fontWeight: 'bold',
-        color: '#999',
         marginTop: 16 * SCALE,
     },
     emptyStateText: {
         fontSize: 14 * SCALE,
-        color: '#999',
         textAlign: 'center',
         marginTop: 8 * SCALE,
     },
-    // Estilos del Modal - Mejorados para teclado
+    // Estilos del Modal
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
         justifyContent: 'flex-end',
     },
     modalContent: {
-        backgroundColor: '#fff',
         borderTopLeftRadius: 20 * SCALE,
         borderTopRightRadius: 20 * SCALE,
         paddingHorizontal: 20 * SCALE,
         paddingTop: 20 * SCALE,
-        paddingBottom: Platform.OS === 'ios' ? 34 : 20 * SCALE, // Safe area para iOS
-        maxHeight: screenHeight * 0.9, // Máximo 90% de la pantalla
-        minHeight: screenHeight * 0.6, // Mínimo 60% de la pantalla
+        paddingBottom: Platform.OS === 'ios' ? 34 : 20 * SCALE,
+        maxHeight: screenHeight * 0.9,
+        minHeight: screenHeight * 0.6,
     },
     modalHeader: {
         flexDirection: 'row',
@@ -827,12 +847,10 @@ const styles = StyleSheet.create({
         marginBottom: 20 * SCALE,
         paddingBottom: 10 * SCALE,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
     },
     modalTitle: {
         fontSize: 18 * SCALE,
         fontWeight: 'bold',
-        color: '#333',
         flex: 1,
     },
     modalScrollView: {
@@ -842,18 +860,14 @@ const styles = StyleSheet.create({
     inputLabel: {
         fontSize: 14 * SCALE,
         fontWeight: '500',
-        color: '#333',
         marginBottom: 8 * SCALE,
         marginTop: 16 * SCALE,
     },
     modalInput: {
         borderWidth: 1,
-        borderColor: '#ddd',
         borderRadius: 8 * SCALE,
         padding: 12 * SCALE,
         fontSize: 16 * SCALE,
-        color: '#333',
-        backgroundColor: '#fff',
         minHeight: 44 * SCALE,
     },
     multilineInput: {
@@ -868,16 +882,11 @@ const styles = StyleSheet.create({
         width: 40 * SCALE,
         height: 40 * SCALE,
         borderRadius: 20 * SCALE,
-        backgroundColor: '#f5f5f5',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 8 * SCALE,
         borderWidth: 2,
         borderColor: 'transparent',
-    },
-    selectedEmoji: {
-        backgroundColor: '#968ce4',
-        borderColor: '#968ce4',
     },
     emojiText: {
         fontSize: 20 * SCALE,
@@ -894,9 +903,6 @@ const styles = StyleSheet.create({
         borderRadius: 18 * SCALE,
         borderWidth: 3,
         borderColor: 'transparent',
-    },
-    selectedColor: {
-        borderColor: '#333',
     },
     priorityContainer: {
         flexDirection: 'row',
@@ -921,20 +927,17 @@ const styles = StyleSheet.create({
         gap: 12 * SCALE,
         paddingTop: 10 * SCALE,
         borderTopWidth: 1,
-        borderTopColor: '#f0f0f0',
     },
     cancelButton: {
         flex: 1,
         paddingVertical: 12 * SCALE,
         borderRadius: 8 * SCALE,
-        backgroundColor: '#f5f5f5',
         alignItems: 'center',
         minHeight: 44 * SCALE,
         justifyContent: 'center',
     },
     cancelButtonText: {
         fontSize: 16 * SCALE,
-        color: '#666',
         fontWeight: '500',
     },
     createButton: {

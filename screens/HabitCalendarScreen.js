@@ -16,11 +16,13 @@ import {
     Circle,
     Target
 } from 'lucide-react-native';
+import { useTheme } from './ThemeContext'; // ✅ Importar el hook del contexto
 
 const SCALE = 1.2;
 const { width } = Dimensions.get('window');
 
 const HabitCalendarScreen = ({ navigation, route }) => {
+    const { colors } = useTheme(); // ✅ Usar el contexto de tema
     const { habit } = route.params || {};
     
     const [viewMode, setViewMode] = useState('semanal'); // 'semanal' o 'mensual'
@@ -37,6 +39,24 @@ const HabitCalendarScreen = ({ navigation, route }) => {
             target: 8,
             frequency: 'Diario',
             color: '#968ce4'
+        },
+        {
+            id: 2,
+            name: 'Ejercicio',
+            icon: 'Activity',
+            category: 'Fitness',
+            target: 30,
+            frequency: 'Diario',
+            color: '#4ecdc4'
+        },
+        {
+            id: 3,
+            name: 'Leer',
+            icon: 'BookOpen',
+            category: 'Educación',
+            target: 20,
+            frequency: 'Diario',
+            color: '#ff6b6b'
         }
     ]);
 
@@ -143,13 +163,13 @@ const HabitCalendarScreen = ({ navigation, route }) => {
     };
 
     const getProgressColor = (progress) => {
-        if (!progress) return '#f5f5f5';
+        if (!progress) return colors.surfaceVariant;
         
         const percentage = Math.min(progress.value / progress.target, 1);
         if (percentage >= 1) return selectedHabit.color;
         if (percentage >= 0.5) return selectedHabit.color + '80';
         if (percentage > 0) return selectedHabit.color + '40';
-        return '#ffebee';
+        return colors.error + '20';
     };
 
     const formatPeriod = () => {
@@ -176,7 +196,9 @@ const HabitCalendarScreen = ({ navigation, route }) => {
             <View style={styles.weeklyContainer}>
                 <View style={styles.weekHeader}>
                     {dayNames.map((dayName, index) => (
-                        <Text key={index} style={styles.dayHeader}>{dayName}</Text>
+                        <Text key={index} style={[styles.dayHeader, { color: colors.textSecondary }]}>
+                            {dayName}
+                        </Text>
                     ))}
                 </View>
                 <View style={styles.weekDays}>
@@ -189,21 +211,22 @@ const HabitCalendarScreen = ({ navigation, route }) => {
                             <View key={index} style={styles.dayCell}>
                                 <Text style={[
                                     styles.dayNumber,
-                                    isToday && styles.todayText,
-                                    isFuture && styles.futureText
+                                    { color: colors.text },
+                                    isToday && { color: colors.primary },
+                                    isFuture && { color: colors.textTertiary }
                                 ]}>
                                     {day.getDate()}
                                 </Text>
                                 <View style={[
                                     styles.progressCircle,
                                     { backgroundColor: getProgressColor(progress) },
-                                    isToday && styles.todayCircle
+                                    isToday && { borderColor: colors.primary }
                                 ]}>
                                     {progress && progress.completed && (
                                         <CheckCircle size={12 * SCALE} color="#fff" />
                                     )}
                                     {progress && !progress.completed && progress.value > 0 && (
-                                        <Text style={styles.progressText}>
+                                        <Text style={[styles.progressText, { color: colors.text }]}>
                                             {progress.value}/{progress.target}
                                         </Text>
                                     )}
@@ -229,7 +252,9 @@ const HabitCalendarScreen = ({ navigation, route }) => {
             <View style={styles.monthlyContainer}>
                 <View style={styles.monthHeader}>
                     {dayNames.map((dayName, index) => (
-                        <Text key={index} style={styles.dayHeader}>{dayName}</Text>
+                        <Text key={index} style={[styles.dayHeader, { color: colors.textSecondary }]}>
+                            {dayName}
+                        </Text>
                     ))}
                 </View>
                 {weeks.map((week, weekIndex) => (
@@ -244,19 +269,20 @@ const HabitCalendarScreen = ({ navigation, route }) => {
                                 <View key={dayIndex} style={styles.monthDayCell}>
                                     <Text style={[
                                         styles.monthDayNumber,
-                                        isToday && styles.todayText,
-                                        isFuture && styles.futureText,
-                                        !isCurrentMonth && styles.otherMonthText
+                                        { color: colors.text },
+                                        isToday && { color: colors.primary },
+                                        isFuture && { color: colors.textTertiary },
+                                        !isCurrentMonth && { color: colors.textTertiary }
                                     ]}>
                                         {day.getDate()}
                                     </Text>
                                     <View style={[
                                         styles.monthProgressDot,
                                         { backgroundColor: getProgressColor(progress) },
-                                        isToday && styles.todayDot
+                                        isToday && { borderColor: colors.primary }
                                     ]}>
                                         {progress && progress.completed && (
-                                            <View style={styles.completedDot} />
+                                            <View style={[styles.completedDot, { backgroundColor: colors.surface }]} />
                                         )}
                                     </View>
                                 </View>
@@ -269,13 +295,18 @@ const HabitCalendarScreen = ({ navigation, route }) => {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
             {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <ArrowLeft size={24 * SCALE} color="#968ce4" />
+            <View style={[styles.header, { 
+               
+            }]}>
+                <TouchableOpacity 
+                    onPress={() => navigation.goBack()} 
+                    style={[styles.backButton, { backgroundColor: colors.cardCompleted }]}
+                >
+                    <ArrowLeft size={24 * SCALE} color={colors.primary} />
                 </TouchableOpacity>
-                <Text style={styles.title}>Calendario</Text>
+                <Text style={[styles.title, { color: colors.text }]}>Calendario</Text>
                 <View style={styles.placeholder} />
             </View>
 
@@ -307,17 +338,18 @@ const HabitCalendarScreen = ({ navigation, route }) => {
 
                 {/* Controles de vista */}
                 <View style={styles.viewControls}>
-                    <View style={styles.viewToggle}>
+                    <View style={[styles.viewToggle, { backgroundColor: colors.surfaceVariant }]}>
                         <TouchableOpacity
                             style={[
                                 styles.toggleButton,
-                                viewMode === 'semanal' && styles.activeToggle
+                                viewMode === 'semanal' && { backgroundColor: colors.primary }
                             ]}
                             onPress={() => setViewMode('semanal')}
                         >
                             <Text style={[
                                 styles.toggleText,
-                                viewMode === 'semanal' && styles.activeToggleText
+                                { color: colors.textSecondary },
+                                viewMode === 'semanal' && { color: '#fff', fontWeight: '500' }
                             ]}>
                                 Semanal
                             </Text>
@@ -325,13 +357,14 @@ const HabitCalendarScreen = ({ navigation, route }) => {
                         <TouchableOpacity
                             style={[
                                 styles.toggleButton,
-                                viewMode === 'mensual' && styles.activeToggle
+                                viewMode === 'mensual' && { backgroundColor: colors.primary }
                             ]}
                             onPress={() => setViewMode('mensual')}
                         >
                             <Text style={[
                                 styles.toggleText,
-                                viewMode === 'mensual' && styles.activeToggleText
+                                { color: colors.textSecondary },
+                                viewMode === 'mensual' && { color: '#fff', fontWeight: '500' }
                             ]}>
                                 Mensual
                             </Text>
@@ -342,55 +375,73 @@ const HabitCalendarScreen = ({ navigation, route }) => {
                 {/* Navegación de período */}
                 <View style={styles.periodNavigation}>
                     <TouchableOpacity
-                        style={styles.navButton}
+                        style={[styles.navButton, { backgroundColor: colors.cardCompleted }]}
                         onPress={() => navigatePeriod(-1)}
                     >
-                        <ChevronLeft size={24 * SCALE} color="#968ce4" />
+                        <ChevronLeft size={24 * SCALE} color={colors.primary} />
                     </TouchableOpacity>
                     
-                    <Text style={styles.periodText}>{formatPeriod()}</Text>
+                    <Text style={[styles.periodText, { color: colors.text }]}>
+                        {formatPeriod()}
+                    </Text>
                     
                     <TouchableOpacity
-                        style={styles.navButton}
+                        style={[styles.navButton, { backgroundColor: colors.cardCompleted }]}
                         onPress={() => navigatePeriod(1)}
                     >
-                        <ChevronRight size={24 * SCALE} color="#968ce4" />
+                        <ChevronRight size={24 * SCALE} color={colors.primary} />
                     </TouchableOpacity>
                 </View>
 
                 {/* Calendario */}
-                <View style={styles.calendarContainer}>
+                <View style={[styles.calendarContainer, { 
+                    backgroundColor: colors.card,
+                    shadowColor: colors.text 
+                }]}>
                     {viewMode === 'semanal' ? renderWeeklyCalendar() : renderMonthlyCalendar()}
                 </View>
 
                 {/* Estadísticas */}
-                <View style={styles.statsContainer}>
-                    <Text style={styles.statsTitle}>Estadísticas del período</Text>
+                <View style={[styles.statsContainer, { 
+                    backgroundColor: colors.card,
+                    shadowColor: colors.text 
+                }]}>
+                    <Text style={[styles.statsTitle, { color: colors.text }]}>
+                        Estadísticas del período
+                    </Text>
                     <View style={styles.statsGrid}>
-                        <View style={styles.statCard}>
+                        <View style={[styles.statCard, { backgroundColor: colors.surfaceVariant }]}>
                             <Target size={20 * SCALE} color={selectedHabit.color} />
-                            <Text style={styles.statValue}>
+                            <Text style={[styles.statValue, { color: colors.text }]}>
                                 {Object.values(habitData).filter(d => d.completed).length}
                             </Text>
-                            <Text style={styles.statLabel}>Días completados</Text>
+                            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                                Días completados
+                            </Text>
                         </View>
-                        <View style={styles.statCard}>
+                        <View style={[styles.statCard, { backgroundColor: colors.surfaceVariant }]}>
                             <CalendarIcon size={20 * SCALE} color={selectedHabit.color} />
-                            <Text style={styles.statValue}>
+                            <Text style={[styles.statValue, { color: colors.text }]}>
                                 {Math.round((Object.values(habitData).filter(d => d.completed).length / 
                                 Object.keys(habitData).length) * 100) || 0}%
                             </Text>
-                            <Text style={styles.statLabel}>Porcentaje</Text>
+                            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                                Porcentaje
+                            </Text>
                         </View>
-                        <View style={styles.statCard}>
+                        <View style={[styles.statCard, { backgroundColor: colors.surfaceVariant }]}>
                             <CheckCircle size={20 * SCALE} color={selectedHabit.color} />
-                            <Text style={styles.statValue}>
+                            <Text style={[styles.statValue, { color: colors.text }]}>
                                 {Object.values(habitData).reduce((sum, d) => sum + (d.value || 0), 0)}
                             </Text>
-                            <Text style={styles.statLabel}>Total realizado</Text>
+                            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                                Total realizado
+                            </Text>
                         </View>
                     </View>
                 </View>
+
+                <View style={{ height: 20 * SCALE }} />
             </ScrollView>
         </View>
     );
@@ -399,7 +450,6 @@ const HabitCalendarScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
     },
     header: {
         flexDirection: 'row',
@@ -408,21 +458,17 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16 * SCALE,
         paddingTop: 50 * SCALE,
         paddingBottom: 20 * SCALE,
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
     },
     backButton: {
         width: 40 * SCALE,
         height: 40 * SCALE,
         borderRadius: 20 * SCALE,
-        backgroundColor: '#f3f0ff',
         alignItems: 'center',
         justifyContent: 'center',
     },
     title: {
         fontSize: 20 * SCALE,
         fontWeight: 'bold',
-        color: '#333',
     },
     placeholder: {
         width: 40 * SCALE,
@@ -450,7 +496,6 @@ const styles = StyleSheet.create({
     },
     viewToggle: {
         flexDirection: 'row',
-        backgroundColor: '#f5f5f5',
         borderRadius: 25 * SCALE,
         padding: 4 * SCALE,
     },
@@ -459,16 +504,8 @@ const styles = StyleSheet.create({
         paddingVertical: 8 * SCALE,
         borderRadius: 20 * SCALE,
     },
-    activeToggle: {
-        backgroundColor: '#968ce4',
-    },
     toggleText: {
         fontSize: 14 * SCALE,
-        color: '#666',
-    },
-    activeToggleText: {
-        color: '#fff',
-        fontWeight: '500',
     },
     periodNavigation: {
         flexDirection: 'row',
@@ -480,23 +517,19 @@ const styles = StyleSheet.create({
         width: 40 * SCALE,
         height: 40 * SCALE,
         borderRadius: 20 * SCALE,
-        backgroundColor: '#f3f0ff',
         alignItems: 'center',
         justifyContent: 'center',
     },
     periodText: {
         fontSize: 16 * SCALE,
         fontWeight: '600',
-        color: '#333',
         textTransform: 'capitalize',
     },
     calendarContainer: {
-        backgroundColor: '#fff',
         borderRadius: 12 * SCALE,
         padding: 16 * SCALE,
         marginBottom: 20 * SCALE,
         elevation: 2,
-        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
@@ -512,7 +545,6 @@ const styles = StyleSheet.create({
     },
     dayHeader: {
         fontSize: 12 * SCALE,
-        color: '#666',
         fontWeight: '500',
         textAlign: 'center',
         width: (width - 64 * SCALE) / 7,
@@ -528,7 +560,6 @@ const styles = StyleSheet.create({
     },
     dayNumber: {
         fontSize: 14 * SCALE,
-        color: '#333',
         marginBottom: 8 * SCALE,
         fontWeight: '500',
     },
@@ -541,12 +572,8 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: 'transparent',
     },
-    todayCircle: {
-        borderColor: '#968ce4',
-    },
     progressText: {
         fontSize: 8 * SCALE,
-        color: '#333',
         fontWeight: 'bold',
     },
     // Estilos para vista mensual
@@ -570,7 +597,6 @@ const styles = StyleSheet.create({
     },
     monthDayNumber: {
         fontSize: 12 * SCALE,
-        color: '#333',
         marginBottom: 4 * SCALE,
     },
     monthProgressDot: {
@@ -582,30 +608,12 @@ const styles = StyleSheet.create({
         width: 4 * SCALE,
         height: 4 * SCALE,
         borderRadius: 2 * SCALE,
-        backgroundColor: '#fff',
-    },
-    todayDot: {
-        borderWidth: 1,
-        borderColor: '#968ce4',
-    },
-    // Estilos comunes
-    todayText: {
-        color: '#968ce4',
-        fontWeight: 'bold',
-    },
-    futureText: {
-        color: '#ccc',
-    },
-    otherMonthText: {
-        color: '#ddd',
     },
     // Estadísticas
     statsContainer: {
-        backgroundColor: '#fff',
         borderRadius: 12 * SCALE,
         padding: 16 * SCALE,
         elevation: 2,
-        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
@@ -613,7 +621,6 @@ const styles = StyleSheet.create({
     statsTitle: {
         fontSize: 16 * SCALE,
         fontWeight: 'bold',
-        color: '#333',
         marginBottom: 16 * SCALE,
     },
     statsGrid: {
@@ -624,19 +631,16 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         padding: 12 * SCALE,
-        backgroundColor: '#f8f9fa',
         borderRadius: 8 * SCALE,
         marginHorizontal: 4 * SCALE,
     },
     statValue: {
         fontSize: 18 * SCALE,
         fontWeight: 'bold',
-        color: '#333',
         marginVertical: 4 * SCALE,
     },
     statLabel: {
         fontSize: 12 * SCALE,
-        color: '#666',
         textAlign: 'center',
     },
 });

@@ -54,10 +54,13 @@ import {
     MessageCircle
 } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useTheme } from './ThemeContext'; // ✅ Importar el hook del contexto
 
 const SCALE = 1.2;
 
 const AddHabitScreen = ({ navigation }) => {
+    const { colors } = useTheme(); // ✅ Usar el contexto de tema
+
     const [habitName, setHabitName] = useState('');
     const [habitDescription, setHabitDescription] = useState('');
     const [selectedIcon, setSelectedIcon] = useState(null);
@@ -222,78 +225,139 @@ const AddHabitScreen = ({ navigation }) => {
         ]);
     };
 
+    // ✅ Función para obtener colores dinámicos basados en el tema
+    const getDifficultyColor = (level, isSelected) => {
+        const baseColors = {
+            'Fácil': { bg: colors.success + '20', text: colors.success, selectedBg: colors.success + '40' },
+            'Medio': { bg: colors.warning + '20', text: colors.warning, selectedBg: colors.warning + '40' },
+            'Difícil': { bg: colors.error + '20', text: colors.error, selectedBg: colors.error + '40' }
+        };
+        
+        return {
+            backgroundColor: isSelected ? baseColors[level].selectedBg : baseColors[level].bg,
+            borderColor: isSelected ? baseColors[level].text : colors.border,
+            textColor: isSelected ? baseColors[level].text : colors.textSecondary
+        };
+    };
+
+    const getPriorityColor = (level, isSelected) => {
+        const baseColors = {
+            'Baja': { bg: colors.textTertiary + '20', text: colors.textSecondary, selectedBg: colors.textTertiary + '40' },
+            'Media': { bg: colors.warning + '20', text: colors.warning, selectedBg: colors.warning + '40' },
+            'Alta': { bg: colors.error + '20', text: colors.error, selectedBg: colors.error + '40' }
+        };
+        
+        return {
+            backgroundColor: isSelected ? baseColors[level].selectedBg : baseColors[level].bg,
+            borderColor: isSelected ? baseColors[level].text : colors.border,
+            textColor: isSelected ? baseColors[level].text : colors.textSecondary
+        };
+    };
+
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
             {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <ArrowLeft size={24 * SCALE} color="#968ce4" />
+            <View style={[styles.header, { 
+            }]}>
+                <TouchableOpacity 
+                    onPress={() => navigation.goBack()} 
+                    style={[styles.backButton, { backgroundColor: colors.cardCompleted }]}
+                >
+                    <ArrowLeft size={24 * SCALE} color={colors.primary} />
                 </TouchableOpacity>
-                <Text style={styles.title}>Nuevo Hábito</Text>
-                <TouchableOpacity onPress={validateAndSave} style={styles.saveButton}>
+                <Text style={[styles.title, { color: colors.text }]}>Nuevo Hábito</Text>
+                <TouchableOpacity 
+                    onPress={validateAndSave} 
+                    style={[styles.saveButton, { backgroundColor: colors.primary }]}
+                >
                     <Check size={24 * SCALE} color="#fff" />
                 </TouchableOpacity>
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContainer}>
                 {/* Información Básica */}
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Información Básica</Text>
+                <View style={[styles.card, { 
+                    backgroundColor: colors.surface,
+                    shadowColor: colors.text 
+                }]}>
+                    <Text style={[styles.cardTitle, { color: colors.text }]}>Información Básica</Text>
                     
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Nombre del Hábito *</Text>
+                        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Nombre del Hábito *</Text>
                         <TextInput
-                            style={styles.input}
+                            style={[styles.input, { 
+                                borderColor: colors.border,
+                                backgroundColor: colors.input,
+                                color: colors.text 
+                            }]}
                             value={habitName}
                             onChangeText={setHabitName}
+                            placeholderTextColor={colors.placeholder}
                         />
                     </View>
 
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Descripción</Text>
+                        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Descripción</Text>
                         <TextInput
-                            style={[styles.input, styles.textArea]}
+                            style={[styles.input, styles.textArea, { 
+                                borderColor: colors.border,
+                                backgroundColor: colors.input,
+                                color: colors.text 
+                            }]}
                             value={habitDescription}
                             onChangeText={setHabitDescription}
                             multiline
                             numberOfLines={3}
+                            placeholderTextColor={colors.placeholder}
                         />
                     </View>
 
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Notas Adicionales</Text>
+                        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Notas Adicionales</Text>
                         <TextInput
-                            style={[styles.input, styles.textArea]}
+                            style={[styles.input, styles.textArea, { 
+                                borderColor: colors.border,
+                                backgroundColor: colors.input,
+                                color: colors.text 
+                            }]}
                             value={notes}
                             onChangeText={setNotes}
                             multiline
                             numberOfLines={2}
+                            placeholderTextColor={colors.placeholder}
                         />
                     </View>
                 </View>
 
                 {/* Iconos organizados por categorías */}
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Icono *</Text>
+                <View style={[styles.card, { 
+                    backgroundColor: colors.surface,
+                    shadowColor: colors.text 
+                }]}>
+                    <Text style={[styles.cardTitle, { color: colors.text }]}>Icono *</Text>
                     
                     {Object.entries(iconCategories).map(([categoryName, categoryIcons]) => (
                         <View key={categoryName} style={styles.iconCategorySection}>
-                            <Text style={styles.iconCategoryTitle}>{categoryName}</Text>
+                            <Text style={[styles.iconCategoryTitle, { color: colors.primary }]}>{categoryName}</Text>
                             <View style={styles.iconGrid}>
                                 {categoryIcons.map((iconItem, index) => {
                                     const IconComponent = iconItem.icon;
+                                    const isSelected = selectedIcon === iconItem.icon;
                                     return (
                                         <TouchableOpacity
                                             key={index}
                                             style={[
                                                 styles.iconButton,
-                                                selectedIcon === iconItem.icon && styles.selectedIcon
+                                                { 
+                                                    backgroundColor: isSelected ? colors.primary : colors.surfaceVariant,
+                                                    borderColor: isSelected ? colors.primary : colors.border
+                                                }
                                             ]}
                                             onPress={() => setSelectedIcon(iconItem.icon)}
                                         >
                                             <IconComponent
                                                 size={20 * SCALE}
-                                                color={selectedIcon === iconItem.icon ? '#fff' : '#968ce4'}
+                                                color={isSelected ? '#fff' : colors.primary}
                                             />
                                         </TouchableOpacity>
                                     );
@@ -304,38 +368,50 @@ const AddHabitScreen = ({ navigation }) => {
                 </View>
 
                 {/* Categoría con opción personalizada */}
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Categoría *</Text>
+                <View style={[styles.card, { 
+                    backgroundColor: colors.surface,
+                    shadowColor: colors.text 
+                }]}>
+                    <Text style={[styles.cardTitle, { color: colors.text }]}>Categoría *</Text>
                     
                     <View style={styles.categoryGrid}>
-                        {predefinedCategories.map((category, index) => (
-                            <TouchableOpacity
-                                key={index}
-                                style={[
-                                    styles.categoryButton,
-                                    selectedCategory === category && styles.selectedCategory
-                                ]}
-                                onPress={() => setSelectedCategory(category)}
-                            >
-                                <Text style={[
-                                    styles.categoryText,
-                                    selectedCategory === category && styles.selectedCategoryText
-                                ]}>
-                                    {category}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
+                        {predefinedCategories.map((category, index) => {
+                            const isSelected = selectedCategory === category;
+                            return (
+                                <TouchableOpacity
+                                    key={index}
+                                    style={[
+                                        styles.categoryButton,
+                                        {
+                                            backgroundColor: isSelected ? colors.primary : colors.surfaceVariant,
+                                            borderColor: isSelected ? colors.primary : colors.border
+                                        }
+                                    ]}
+                                    onPress={() => setSelectedCategory(category)}
+                                >
+                                    <Text style={[
+                                        styles.categoryText,
+                                        { color: isSelected ? '#fff' : colors.textSecondary }
+                                    ]}>
+                                        {category}
+                                    </Text>
+                                </TouchableOpacity>
+                            )
+                        })}
                         
                         <TouchableOpacity
                             style={[
                                 styles.categoryButton,
-                                selectedCategory === 'Personalizada' && styles.selectedCategory
+                                {
+                                    backgroundColor: selectedCategory === 'Personalizada' ? colors.primary : colors.surfaceVariant,
+                                    borderColor: selectedCategory === 'Personalizada' ? colors.primary : colors.border
+                                }
                             ]}
                             onPress={() => setSelectedCategory('Personalizada')}
                         >
                             <Text style={[
                                 styles.categoryText,
-                                selectedCategory === 'Personalizada' && styles.selectedCategoryText
+                                { color: selectedCategory === 'Personalizada' ? '#fff' : colors.textSecondary }
                             ]}>
                                 + Personalizada
                             </Text>
@@ -345,128 +421,165 @@ const AddHabitScreen = ({ navigation }) => {
                     {selectedCategory === 'Personalizada' && (
                         <View style={styles.customInputContainer}>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, { 
+                                    borderColor: colors.border,
+                                    backgroundColor: colors.input,
+                                    color: colors.text 
+                                }]}
                                 value={customCategory}
                                 onChangeText={setCustomCategory}
                                 placeholder="Nombre de la nueva categoría"
-                                placeholderTextColor="#999"
+                                placeholderTextColor={colors.placeholder}
                             />
                         </View>
                     )}
                 </View>
 
                 {/* Meta/Objetivo mejorado */}
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Meta y Objetivos</Text>
+                <View style={[styles.card, { 
+                    backgroundColor: colors.surface,
+                    shadowColor: colors.text 
+                }]}>
+                    <Text style={[styles.cardTitle, { color: colors.text }]}>Meta y Objetivos</Text>
                     
                     <View style={styles.targetContainer}>
                         <TouchableOpacity 
-                            style={styles.adjustButton}
+                            style={[styles.adjustButton, { backgroundColor: colors.cardCompleted }]}
                             onPress={() => adjustTargetValue(-1)}
                         >
-                            <Minus size={20 * SCALE} color="#968ce4" />
+                            <Minus size={20 * SCALE} color={colors.primary} />
                         </TouchableOpacity>
                         
                         <TextInput
-                            style={[styles.input, styles.numberInput]}
+                            style={[styles.input, styles.numberInput, { 
+                                borderColor: colors.border,
+                                backgroundColor: colors.input,
+                                color: colors.text 
+                            }]}
                             value={targetValue}
                             onChangeText={setTargetValue}
                             placeholder="1"
-                            placeholderTextColor="#999"
+                            placeholderTextColor={colors.placeholder}
                             keyboardType="numeric"
                         />
                         
                         <TouchableOpacity 
-                            style={styles.adjustButton}
+                            style={[styles.adjustButton, { backgroundColor: colors.cardCompleted }]}
                             onPress={() => adjustTargetValue(1)}
                         >
-                            <Plus size={20 * SCALE} color="#968ce4" />
+                            <Plus size={20 * SCALE} color={colors.primary} />
                         </TouchableOpacity>
                     </View>
 
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Unidad de Medida</Text>
+                        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Unidad de Medida</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.unitsScroll}>
-                            {targetUnits.map((unit, index) => (
-                                <TouchableOpacity
-                                    key={index}
-                                    style={[
-                                        styles.unitButton,
-                                        targetUnit === unit && styles.selectedUnit
-                                    ]}
-                                    onPress={() => setTargetUnit(unit)}
-                                >
-                                    <Text style={[
-                                        styles.unitText,
-                                        targetUnit === unit && styles.selectedUnitText
-                                    ]}>
-                                        {unit}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
+                            {targetUnits.map((unit, index) => {
+                                const isSelected = targetUnit === unit;
+                                return (
+                                    <TouchableOpacity
+                                        key={index}
+                                        style={[
+                                            styles.unitButton,
+                                            {
+                                                backgroundColor: isSelected ? colors.primary : colors.surfaceVariant,
+                                                borderColor: isSelected ? colors.primary : colors.border
+                                            }
+                                        ]}
+                                        onPress={() => setTargetUnit(unit)}
+                                    >
+                                        <Text style={[
+                                            styles.unitText,
+                                            { color: isSelected ? '#fff' : colors.textSecondary }
+                                        ]}>
+                                            {unit}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )
+                            })}
                         </ScrollView>
                     </View>
                 </View>
 
                 {/* Frecuencia mejorada */}
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Frecuencia *</Text>
+                <View style={[styles.card, { 
+                    backgroundColor: colors.surface,
+                    shadowColor: colors.text 
+                }]}>
+                    <Text style={[styles.cardTitle, { color: colors.text }]}>Frecuencia *</Text>
                     
                     <View style={styles.frequencyGrid}>
-                        {frequencies.map((freq, index) => (
-                            <TouchableOpacity
-                                key={index}
-                                style={[
-                                    styles.frequencyButton,
-                                    frequency === freq && styles.selectedFrequency
-                                ]}
-                                onPress={() => setFrequency(freq)}
-                            >
-                                <Text style={[
-                                    styles.frequencyText,
-                                    frequency === freq && styles.selectedFrequencyText
-                                ]}>
-                                    {freq}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
+                        {frequencies.map((freq, index) => {
+                            const isSelected = frequency === freq;
+                            return (
+                                <TouchableOpacity
+                                    key={index}
+                                    style={[
+                                        styles.frequencyButton,
+                                        {
+                                            backgroundColor: isSelected ? colors.primary : colors.surfaceVariant,
+                                            borderColor: isSelected ? colors.primary : colors.border
+                                        }
+                                    ]}
+                                    onPress={() => setFrequency(freq)}
+                                >
+                                    <Text style={[
+                                        styles.frequencyText,
+                                        { color: isSelected ? '#fff' : colors.textSecondary }
+                                    ]}>
+                                        {freq}
+                                    </Text>
+                                </TouchableOpacity>
+                            )
+                        })}
                     </View>
 
                     {frequency === 'Personalizada' && (
                         <View style={styles.customInputContainer}>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, { 
+                                    borderColor: colors.border,
+                                    backgroundColor: colors.input,
+                                    color: colors.text 
+                                }]}
                                 value={customFrequency}
                                 onChangeText={setCustomFrequency}
+                                placeholderTextColor={colors.placeholder}
                             />
                         </View>
                     )}
                 </View>
 
                 {/* Configuración de Recordatorio */}
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Recordatorios</Text>
+                <View style={[styles.card, { 
+                    backgroundColor: colors.surface,
+                    shadowColor: colors.text 
+                }]}>
+                    <Text style={[styles.cardTitle, { color: colors.text }]}>Recordatorios</Text>
                     
                     <View style={styles.reminderToggle}>
                         <View style={styles.reminderInfo}>
-                            <Bell size={20 * SCALE} color="#968ce4" />
-                            <Text style={styles.reminderText}>Activar recordatorios</Text>
+                            <Bell size={20 * SCALE} color={colors.primary} />
+                            <Text style={[styles.reminderText, { color: colors.text }]}>Activar recordatorios</Text>
                         </View>
                         <Switch
                             value={reminderEnabled}
                             onValueChange={setReminderEnabled}
-                            trackColor={{ false: '#ddd', true: '#968ce4' }}
-                            thumbColor={reminderEnabled ? '#fff' : '#f4f3f4'}
+                            trackColor={{ false: colors.border, true: colors.primary }}
+                            thumbColor={reminderEnabled ? '#fff' : colors.surfaceVariant}
                         />
                     </View>
 
                     {reminderEnabled && (
                         <TouchableOpacity
-                            style={styles.timePickerButton}
+                            style={[styles.timePickerButton, { 
+                                backgroundColor: colors.cardCompleted,
+                                borderColor: colors.border 
+                            }]}
                             onPress={() => setShowTimePicker(true)}
                         >
-                            <Clock size={20 * SCALE} color="#968ce4" />
-                            <Text style={styles.timeText}>
+                            <Clock size={20 * SCALE} color={colors.primary} />
+                            <Text style={[styles.timeText, { color: colors.text }]}>
                                 {reminderTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </Text>
                         </TouchableOpacity>
@@ -487,54 +600,75 @@ const AddHabitScreen = ({ navigation }) => {
                 </View>
 
                 {/* Configuración Avanzada */}
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Configuración Avanzada</Text>
+                <View style={[styles.card, { 
+                    backgroundColor: colors.surface,
+                    shadowColor: colors.text 
+                }]}>
+                    <Text style={[styles.cardTitle, { color: colors.text }]}>Configuración Avanzada</Text>
                     
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Dificultad</Text>
+                        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Dificultad</Text>
                         <View style={styles.levelContainer}>
-                            {difficultyLevels.map((level, index) => (
-                                <TouchableOpacity
-                                    key={index}
-                                    style={[
-                                        styles.levelButton,
-                                        difficulty === level && styles.selectedLevel,
-                                        { backgroundColor: level === 'Fácil' ? '#e8f5e8' : level === 'Medio' ? '#fff4e6' : '#ffe6e6' }
-                                    ]}
-                                    onPress={() => setDifficulty(level)}
-                                >
-                                    <Text style={[
-                                        styles.levelText,
-                                        difficulty === level && styles.selectedLevelText
-                                    ]}>
-                                        {level}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
+                            {difficultyLevels.map((level, index) => {
+                                const isSelected = difficulty === level;
+                                const colorConfig = getDifficultyColor(level, isSelected);
+                                return (
+                                    <TouchableOpacity
+                                        key={index}
+                                        style={[
+                                            styles.levelButton,
+                                            {
+                                                backgroundColor: colorConfig.backgroundColor,
+                                                borderColor: colorConfig.borderColor
+                                            }
+                                        ]}
+                                        onPress={() => setDifficulty(level)}
+                                    >
+                                        <Text style={[
+                                            styles.levelText,
+                                            { 
+                                                color: colorConfig.textColor,
+                                                fontWeight: isSelected ? 'bold' : 'normal'
+                                            }
+                                        ]}>
+                                            {level}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )
+                            })}
                         </View>
                     </View>
 
                     <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Prioridad</Text>
+                        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Prioridad</Text>
                         <View style={styles.levelContainer}>
-                            {priorityLevels.map((level, index) => (
-                                <TouchableOpacity
-                                    key={index}
-                                    style={[
-                                        styles.levelButton,
-                                        priority === level && styles.selectedLevel,
-                                        { backgroundColor: level === 'Baja' ? '#f0f0f0' : level === 'Media' ? '#fff4e6' : '#ffe6e6' }
-                                    ]}
-                                    onPress={() => setPriority(level)}
-                                >
-                                    <Text style={[
-                                        styles.levelText,
-                                        priority === level && styles.selectedLevelText
-                                    ]}>
-                                        {level}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
+                            {priorityLevels.map((level, index) => {
+                                const isSelected = priority === level;
+                                const colorConfig = getPriorityColor(level, isSelected);
+                                return (
+                                    <TouchableOpacity
+                                        key={index}
+                                        style={[
+                                            styles.levelButton,
+                                            {
+                                                backgroundColor: colorConfig.backgroundColor,
+                                                borderColor: colorConfig.borderColor
+                                            }
+                                        ]}
+                                        onPress={() => setPriority(level)}
+                                    >
+                                        <Text style={[
+                                            styles.levelText,
+                                            { 
+                                                color: colorConfig.textColor,
+                                                fontWeight: isSelected ? 'bold' : 'normal'
+                                            }
+                                        ]}>
+                                            {level}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )
+                            })}
                         </View>
                     </View>
                 </View>
@@ -548,7 +682,6 @@ const AddHabitScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f8f9fa',
     },
     header: {
         flexDirection: 'row',
@@ -556,29 +689,23 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 16 * SCALE,
         paddingTop: 50 * SCALE,
-        paddingBottom: 20 * SCALE,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        paddingBottom: 20 * SCALE
     },
     backButton: {
         width: 40 * SCALE,
         height: 40 * SCALE,
         borderRadius: 20 * SCALE,
-        backgroundColor: '#f3f0ff',
         alignItems: 'center',
         justifyContent: 'center',
     },
     title: {
         fontSize: 20 * SCALE,
         fontWeight: 'bold',
-        color: '#333',
     },
     saveButton: {
         width: 40 * SCALE,
         height: 40 * SCALE,
         borderRadius: 20 * SCALE,
-        backgroundColor: '#968ce4',
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -586,11 +713,9 @@ const styles = StyleSheet.create({
         padding: 16 * SCALE,
     },
     card: {
-        backgroundColor: '#fff',
         borderRadius: 16 * SCALE,
         padding: 16 * SCALE,
         marginBottom: 16 * SCALE,
-        shadowColor: '#000',
         shadowOpacity: 0.05,
         shadowRadius: 10 * SCALE,
         elevation: 3,
@@ -598,7 +723,6 @@ const styles = StyleSheet.create({
     cardTitle: {
         fontSize: 18 * SCALE,
         fontWeight: 'bold',
-        color: '#333',
         marginBottom: 16 * SCALE,
     },
     section: {
@@ -607,17 +731,13 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 14 * SCALE,
         fontWeight: '600',
-        color: '#666',
         marginBottom: 8 * SCALE,
     },
     input: {
         borderWidth: 1,
-        borderColor: '#e0e0e0',
         borderRadius: 12 * SCALE,
         padding: 12 * SCALE,
         fontSize: 16 * SCALE,
-        color: '#333',
-        backgroundColor: '#fff',
     },
     textArea: {
         height: 80 * SCALE,
@@ -629,7 +749,6 @@ const styles = StyleSheet.create({
     iconCategoryTitle: {
         fontSize: 14 * SCALE,
         fontWeight: '600',
-        color: '#968ce4',
         marginBottom: 8 * SCALE,
     },
     iconGrid: {
@@ -641,15 +760,9 @@ const styles = StyleSheet.create({
         width: 45 * SCALE,
         height: 45 * SCALE,
         borderRadius: 12 * SCALE,
-        backgroundColor: '#f8f9fa',
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 2,
-        borderColor: 'transparent',
-    },
-    selectedIcon: {
-        backgroundColor: '#968ce4',
-        borderColor: '#968ce4',
     },
     categoryGrid: {
         flexDirection: 'row',
@@ -660,20 +773,10 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16 * SCALE,
         paddingVertical: 8 * SCALE,
         borderRadius: 20 * SCALE,
-        backgroundColor: '#f8f9fa',
         borderWidth: 1,
-        borderColor: '#e0e0e0',
-    },
-    selectedCategory: {
-        backgroundColor: '#968ce4',
-        borderColor: '#968ce4',
     },
     categoryText: {
         fontSize: 14 * SCALE,
-        color: '#666',
-    },
-    selectedCategoryText: {
-        color: '#fff',
     },
     customInputContainer: {
         marginTop: 12 * SCALE,
@@ -688,7 +791,6 @@ const styles = StyleSheet.create({
         width: 40 * SCALE,
         height: 40 * SCALE,
         borderRadius: 20 * SCALE,
-        backgroundColor: '#f3f0ff',
         alignItems: 'center',
         justifyContent: 'center',
         marginHorizontal: 12 * SCALE,
@@ -704,21 +806,11 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12 * SCALE,
         paddingVertical: 6 * SCALE,
         borderRadius: 16 * SCALE,
-        backgroundColor: '#f8f9fa',
         borderWidth: 1,
-        borderColor: '#e0e0e0',
         marginRight: 8 * SCALE,
-    },
-    selectedUnit: {
-        backgroundColor: '#968ce4',
-        borderColor: '#968ce4',
     },
     unitText: {
         fontSize: 12 * SCALE,
-        color: '#666',
-    },
-    selectedUnitText: {
-        color: '#fff',
     },
     frequencyGrid: {
         flexDirection: 'row',
@@ -729,22 +821,12 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16 * SCALE,
         paddingVertical: 8 * SCALE,
         borderRadius: 20 * SCALE,
-        backgroundColor: '#f8f9fa',
         borderWidth: 1,
-        borderColor: '#e0e0e0',
         minWidth: '30%',
         alignItems: 'center',
     },
-    selectedFrequency: {
-        backgroundColor: '#968ce4',
-        borderColor: '#968ce4',
-    },
     frequencyText: {
         fontSize: 14 * SCALE,
-        color: '#666',
-    },
-    selectedFrequencyText: {
-        color: '#fff',
     },
     reminderToggle: {
         flexDirection: 'row',
@@ -758,7 +840,6 @@ const styles = StyleSheet.create({
     },
     reminderText: {
         fontSize: 16 * SCALE,
-        color: '#333',
         marginLeft: 8 * SCALE,
     },
     timePickerButton: {
@@ -766,13 +847,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 12 * SCALE,
         borderRadius: 12 * SCALE,
-        backgroundColor: '#f3f0ff',
         borderWidth: 1,
-        borderColor: '#e0e0e0',
     },
     timeText: {
         fontSize: 16 * SCALE,
-        color: '#333',
         marginLeft: 8 * SCALE,
     },
     levelContainer: {
@@ -785,55 +863,9 @@ const styles = StyleSheet.create({
         borderRadius: 12 * SCALE,
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#e0e0e0',
-    },
-    selectedLevel: {
-        borderColor: '#968ce4',
-        borderWidth: 2,
     },
     levelText: {
         fontSize: 14 * SCALE,
-        color: '#666',
-    },
-    selectedLevelText: {
-        color: '#968ce4',
-        fontWeight: 'bold',
-    },
-    tagInputContainer: {
-        flexDirection: 'row',
-        gap: 8 * SCALE,
-        marginBottom: 12 * SCALE,
-    },
-    addTagButton: {
-        width: 40 * SCALE,
-        height: 40 * SCALE,
-        borderRadius: 20 * SCALE,
-        backgroundColor: '#968ce4',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    tagsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8 * SCALE,
-    },
-    tag: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#968ce4',
-        borderRadius: 16 * SCALE,
-        paddingHorizontal: 12 * SCALE,
-        paddingVertical: 6 * SCALE,
-    },
-    tagText: {
-        fontSize: 12 * SCALE,
-        color: '#fff',
-        marginRight: 4 * SCALE,
-    },
-    tagRemove: {
-        fontSize: 16 * SCALE,
-        color: '#fff',
-        fontWeight: 'bold',
     },
 });
 

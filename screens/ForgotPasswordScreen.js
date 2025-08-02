@@ -20,10 +20,13 @@ import {
   RefreshCw,
   Info
 } from 'lucide-react-native';
+import { useTheme } from './ThemeContext'; // ✅ Importar el hook del contexto
 
 const SCALE = 1.0;
 
 const ForgotPasswordScreen = ({ navigation }) => {
+  const { colors } = useTheme(); // ✅ Usar el contexto de tema
+  
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
@@ -133,25 +136,36 @@ const ForgotPasswordScreen = ({ navigation }) => {
     <>
       {/* Información */}
       <View style={styles.infoContainer}>
-        <Mail size={48 * SCALE} color="#968ce4" />
-        <Text style={styles.infoTitle}>¿Olvidaste tu contraseña?</Text>
-        <Text style={styles.infoText}>
+        <Mail size={48 * SCALE} color={colors.primary} />
+        <Text style={[styles.infoTitle, { color: colors.text }]}>
+          ¿Olvidaste tu contraseña?
+        </Text>
+        <Text style={[styles.infoText, { color: colors.textSecondary }]}>
           No te preocupes, ingresa tu correo electrónico y te enviaremos un código para restablecer tu contraseña.
         </Text>
       </View>
 
       {/* Input de email */}
       <View style={styles.inputSection}>
-        <Text style={styles.inputLabel}>Correo electrónico</Text>
+        <Text style={[styles.inputLabel, { color: colors.text }]}>
+          Correo electrónico
+        </Text>
         <View style={[
           styles.emailContainer,
-          email.length > 0 && !isValidEmail && styles.emailContainerError
+          { 
+            borderColor: colors.border,
+            backgroundColor: colors.input 
+          },
+          email.length > 0 && !isValidEmail && { 
+            borderColor: colors.error,
+            backgroundColor: colors.error + '10'
+          }
         ]}>
-          <Mail size={20 * SCALE} color="#999" style={styles.emailIcon} />
+          <Mail size={20 * SCALE} color={colors.textSecondary} style={styles.emailIcon} />
           <TextInput
-            style={styles.emailInput}
+            style={[styles.emailInput, { color: colors.text }]}
             placeholder="ejemplo@correo.com"
-            placeholderTextColor="#999"
+            placeholderTextColor={colors.placeholder}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -164,25 +178,35 @@ const ForgotPasswordScreen = ({ navigation }) => {
         {/* Validación visual */}
         {email.length > 0 && !isValidEmail && (
           <View style={styles.errorContainer}>
-            <Info size={14 * SCALE} color="#ff4757" />
-            <Text style={styles.errorText}>Ingresa un correo electrónico válido</Text>
+            <Info size={14 * SCALE} color={colors.error} />
+            <Text style={[styles.errorText, { color: colors.error }]}>
+              Ingresa un correo electrónico válido
+            </Text>
           </View>
         )}
         
         {email.length > 0 && isValidEmail && (
           <View style={styles.successContainer}>
-            <CheckCircle size={14 * SCALE} color="#4CAF50" />
-            <Text style={styles.successText}>Correo electrónico válido</Text>
+            <CheckCircle size={14 * SCALE} color={colors.success} />
+            <Text style={[styles.successText, { color: colors.success }]}>
+              Correo electrónico válido
+            </Text>
           </View>
         )}
       </View>
 
       {/* Consejos */}
-      <View style={styles.tipsContainer}>
-        <Text style={styles.tipsTitle}>💡 Consejos:</Text>
-        <Text style={styles.tipText}>• Verifica que el correo esté escrito correctamente</Text>
-        <Text style={styles.tipText}>• Revisa tu bandeja de spam si no recibes el código</Text>
-        <Text style={styles.tipText}>• El código expira en 15 minutos</Text>
+      <View style={[styles.tipsContainer, { backgroundColor: colors.surfaceVariant }]}>
+        <Text style={[styles.tipsTitle, { color: colors.text }]}>💡 Consejos:</Text>
+        <Text style={[styles.tipText, { color: colors.textSecondary }]}>
+          • Verifica que el correo esté escrito correctamente
+        </Text>
+        <Text style={[styles.tipText, { color: colors.textSecondary }]}>
+          • Revisa tu bandeja de spam si no recibes el código
+        </Text>
+        <Text style={[styles.tipText, { color: colors.textSecondary }]}>
+          • El código expira en 15 minutos
+        </Text>
       </View>
     </>
   );
@@ -191,13 +215,17 @@ const ForgotPasswordScreen = ({ navigation }) => {
     <>
       {/* Confirmación */}
       <View style={styles.confirmationContainer}>
-        <CheckCircle size={64 * SCALE} color="#4CAF50" />
-        <Text style={styles.confirmationTitle}>¡Código enviado!</Text>
-        <Text style={styles.confirmationText}>
+        <CheckCircle size={64 * SCALE} color={colors.success} />
+        <Text style={[styles.confirmationTitle, { color: colors.text }]}>
+          ¡Código enviado!
+        </Text>
+        <Text style={[styles.confirmationText, { color: colors.textSecondary }]}>
           Hemos enviado un código de 6 dígitos a:
         </Text>
-        <Text style={styles.emailDisplay}>{email}</Text>
-        <Text style={styles.confirmationSubtext}>
+        <Text style={[styles.emailDisplay, { color: colors.primary }]}>
+          {email}
+        </Text>
+        <Text style={[styles.confirmationSubtext, { color: colors.textTertiary }]}>
           Revisa tu bandeja de entrada y spam. El código expira en 15 minutos.
         </Text>
       </View>
@@ -205,7 +233,10 @@ const ForgotPasswordScreen = ({ navigation }) => {
       {/* Opciones de acción */}
       <View style={styles.actionsContainer}>
         <TouchableOpacity 
-          style={styles.verifyButton}
+          style={[styles.verifyButton, { 
+            backgroundColor: colors.primary,
+            shadowColor: colors.primary 
+          }]}
           onPress={handleVerifyCode}
         >
           <Text style={styles.verifyButtonText}>Verificar código</Text>
@@ -214,19 +245,23 @@ const ForgotPasswordScreen = ({ navigation }) => {
         <TouchableOpacity 
           style={[
             styles.resendButton,
-            countdown > 0 && styles.resendButtonDisabled
+            { 
+              backgroundColor: colors.surfaceVariant,
+              borderColor: colors.border 
+            },
+            countdown > 0 && { backgroundColor: colors.surfaceVariant }
           ]}
           onPress={handleResendCode}
           disabled={countdown > 0 || isLoading}
         >
           {isLoading ? (
-            <RefreshCw size={16 * SCALE} color="#999" />
+            <RefreshCw size={16 * SCALE} color={colors.textSecondary} />
           ) : (
-            <Send size={16 * SCALE} color={countdown > 0 ? "#999" : "#968ce4"} />
+            <Send size={16 * SCALE} color={countdown > 0 ? colors.textSecondary : colors.primary} />
           )}
           <Text style={[
             styles.resendButtonText,
-            countdown > 0 && styles.resendButtonTextDisabled
+            { color: countdown > 0 ? colors.textSecondary : colors.primary }
           ]}>
             {countdown > 0 ? `Reenviar en ${countdown}s` : 'Reenviar código'}
           </Text>
@@ -236,31 +271,34 @@ const ForgotPasswordScreen = ({ navigation }) => {
           style={styles.backToLoginButton}
           onPress={handleBackToLogin}
         >
-          <Text style={styles.backToLoginText}>Volver al inicio de sesión</Text>
+          <Text style={[styles.backToLoginText, { color: colors.textSecondary }]}>
+            Volver al inicio de sesión
+          </Text>
         </TouchableOpacity>
       </View>
     </>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView 
         style={styles.keyboardContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { 
+        }]}>
           <TouchableOpacity 
-            style={styles.backButton}
+            style={[styles.backButton, { backgroundColor: colors.cardCompleted }]}
             onPress={() => navigation.goBack()}
           >
-            <ArrowLeft size={24 * SCALE} color="#968ce4" />
+            <ArrowLeft size={24 * SCALE} color={colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.title}>
+          {/* <Text style={[styles.title, { color: colors.text }]}>
             {emailSent ? 'Verificar código' : 'Recuperar contraseña'}
-          </Text>
-          <View style={styles.placeholder} />
+          </Text> */}
+          {/* <View style={styles.placeholder} /> */}
         </View>
 
         <ScrollView 
@@ -274,11 +312,22 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
         {/* Botón principal */}
         {!emailSent && (
-          <View style={styles.buttonContainer}>
+          <View style={[styles.buttonContainer, { 
+            backgroundColor: colors.surface,
+            borderTopColor: colors.border 
+          }]}>
             <TouchableOpacity 
               style={[
                 styles.sendButton,
-                (!email.trim() || !isValidEmail || isLoading) && styles.sendButtonDisabled
+                { 
+                  backgroundColor: colors.primary,
+                  shadowColor: colors.primary 
+                },
+                (!email.trim() || !isValidEmail || isLoading) && { 
+                  backgroundColor: colors.textTertiary,
+                  shadowOpacity: 0,
+                  elevation: 0 
+                }
               ]}
               onPress={handleSendResetCode}
               disabled={!email.trim() || !isValidEmail || isLoading}
@@ -302,7 +351,6 @@ const ForgotPasswordScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   keyboardContainer: {
     flex: 1,
@@ -313,22 +361,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20 * SCALE,
     paddingTop: 10 * SCALE,
-    paddingBottom: 20 * SCALE,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    paddingBottom: 20 * SCALE
   },
   backButton: {
     width: 40 * SCALE,
     height: 40 * SCALE,
     borderRadius: 20 * SCALE,
-    backgroundColor: '#f3f0ff',
     alignItems: 'center',
     justifyContent: 'center',
   },
   title: {
     fontSize: 20 * SCALE,
     fontWeight: 'bold',
-    color: '#333',
   },
   placeholder: {
     width: 40 * SCALE,
@@ -349,13 +393,11 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 24 * SCALE,
     fontWeight: 'bold',
-    color: '#333',
     marginTop: 16 * SCALE,
     marginBottom: 12 * SCALE,
   },
   infoText: {
     fontSize: 16 * SCALE,
-    color: '#666',
     textAlign: 'center',
     lineHeight: 24 * SCALE,
     paddingHorizontal: 10 * SCALE,
@@ -366,21 +408,14 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14 * SCALE,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 6 * SCALE,
   },
   emailContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
     borderRadius: 10 * SCALE,
-    backgroundColor: '#FAFAFA',
     minHeight: 44 * SCALE,
-  },
-  emailContainerError: {
-    borderColor: '#ff4757',
-    backgroundColor: '#fff5f5',
   },
   emailIcon: {
     marginLeft: 12 * SCALE,
@@ -389,7 +424,6 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 12 * SCALE,
     fontSize: 14 * SCALE,
-    color: '#333',
   },
   errorContainer: {
     flexDirection: 'row',
@@ -399,7 +433,6 @@ const styles = StyleSheet.create({
   errorText: {
     marginLeft: 6 * SCALE,
     fontSize: 12 * SCALE,
-    color: '#ff4757',
   },
   successContainer: {
     flexDirection: 'row',
@@ -409,10 +442,8 @@ const styles = StyleSheet.create({
   successText: {
     marginLeft: 6 * SCALE,
     fontSize: 12 * SCALE,
-    color: '#4CAF50',
   },
   tipsContainer: {
-    backgroundColor: '#f8f9fa',
     padding: 12 * SCALE,
     borderRadius: 10 * SCALE,
     marginBottom: 20 * SCALE,
@@ -420,12 +451,10 @@ const styles = StyleSheet.create({
   tipsTitle: {
     fontSize: 14 * SCALE,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 8 * SCALE,
   },
   tipText: {
     fontSize: 12 * SCALE,
-    color: '#666',
     lineHeight: 18 * SCALE,
     marginBottom: 4 * SCALE,
   },
@@ -438,25 +467,21 @@ const styles = StyleSheet.create({
   confirmationTitle: {
     fontSize: 24 * SCALE,
     fontWeight: 'bold',
-    color: '#333',
     marginTop: 16 * SCALE,
     marginBottom: 12 * SCALE,
   },
   confirmationText: {
     fontSize: 16 * SCALE,
-    color: '#666',
     textAlign: 'center',
     marginBottom: 8 * SCALE,
   },
   emailDisplay: {
     fontSize: 16 * SCALE,
     fontWeight: '600',
-    color: '#968ce4',
     marginBottom: 12 * SCALE,
   },
   confirmationSubtext: {
     fontSize: 14 * SCALE,
-    color: '#999',
     textAlign: 'center',
     lineHeight: 20 * SCALE,
     paddingHorizontal: 10 * SCALE,
@@ -465,11 +490,9 @@ const styles = StyleSheet.create({
     gap: 12 * SCALE,
   },
   verifyButton: {
-    backgroundColor: '#968ce4',
     borderRadius: 10 * SCALE,
     padding: 14 * SCALE,
     alignItems: 'center',
-    shadowColor: '#968ce4',
     shadowOffset: {
       width: 0,
       height: 3,
@@ -487,30 +510,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f8f9fa',
     borderRadius: 10 * SCALE,
     padding: 14 * SCALE,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  resendButtonDisabled: {
-    backgroundColor: '#f5f5f5',
   },
   resendButtonText: {
-    color: '#968ce4',
     fontSize: 14 * SCALE,
     fontWeight: '500',
     marginLeft: 8 * SCALE,
-  },
-  resendButtonTextDisabled: {
-    color: '#999',
   },
   backToLoginButton: {
     alignItems: 'center',
     padding: 12 * SCALE,
   },
   backToLoginText: {
-    color: '#666',
     fontSize: 14 * SCALE,
     textDecorationLine: 'underline',
   },
@@ -521,16 +534,13 @@ const styles = StyleSheet.create({
     paddingBottom: 20 * SCALE,
     paddingTop: 10 * SCALE,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
   },
   sendButton: {
-    backgroundColor: '#968ce4',
     borderRadius: 10 * SCALE,
     padding: 14 * SCALE,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    shadowColor: '#968ce4',
     shadowOffset: {
       width: 0,
       height: 3,
@@ -538,11 +548,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
     elevation: 4,
-  },
-  sendButtonDisabled: {
-    backgroundColor: '#ccc',
-    shadowOpacity: 0,
-    elevation: 0,
   },
   sendButtonText: {
     color: '#FFFFFF',

@@ -20,10 +20,13 @@ import {
   Shield,
   AlertCircle
 } from 'lucide-react-native';
+import { useTheme } from './ThemeContext'; // ✅ Importar el hook del contexto
 
 const SCALE = 1.0;
 
 const ChangePasswordScreen = ({ navigation }) => {
+  const { colors } = useTheme(); // ✅ Usar el contexto de tema
+  
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -51,10 +54,10 @@ const ChangePasswordScreen = ({ navigation }) => {
   const passwordStrength = validatePassword(newPassword);
 
   const getStrengthColor = () => {
-    if (passwordStrength.score <= 2) return '#ff4757';
-    if (passwordStrength.score <= 3) return '#ffa502';
-    if (passwordStrength.score <= 4) return '#2ed573';
-    return '#4CAF50';
+    if (passwordStrength.score <= 2) return colors.error;
+    if (passwordStrength.score <= 3) return colors.warning;
+    if (passwordStrength.score <= 4) return colors.success;
+    return colors.success;
   };
 
   const getStrengthText = () => {
@@ -158,21 +161,24 @@ const ChangePasswordScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView 
         style={styles.keyboardContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { 
+        }]}>
           <TouchableOpacity 
-            style={styles.backButton}
+            style={[styles.backButton, { backgroundColor: colors.cardCompleted }]}
             onPress={() => navigation.goBack()}
           >
-            <ArrowLeft size={24 * SCALE} color="#968ce4" />
+            <ArrowLeft size={24 * SCALE} color={colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.title}>Cambiar Contraseña</Text>
+          <Text style={[styles.title, { color: colors.text }]}>
+            Cambiar Contraseña
+          </Text>
           <View style={styles.placeholder} />
         </View>
 
@@ -182,21 +188,26 @@ const ChangePasswordScreen = ({ navigation }) => {
           keyboardShouldPersistTaps="handled"
         >
           {/* Información de seguridad */}
-          <View style={styles.securityInfo}>
-            <Shield size={24 * SCALE} color="#968ce4" />
-            <Text style={styles.securityText}>
+          <View style={[styles.securityInfo, { backgroundColor: colors.cardCompleted }]}>
+            <Shield size={24 * SCALE} color={colors.primary} />
+            <Text style={[styles.securityText, { color: colors.textSecondary }]}>
               Mantén tu cuenta segura con una contraseña fuerte
             </Text>
           </View>
 
           {/* Contraseña actual */}
           <View style={styles.inputSection}>
-            <Text style={styles.inputLabel}>Contraseña actual</Text>
-            <View style={styles.passwordContainer}>
+            <Text style={[styles.inputLabel, { color: colors.text }]}>
+              Contraseña actual
+            </Text>
+            <View style={[styles.passwordContainer, {
+              borderColor: colors.border,
+              backgroundColor: colors.input
+            }]}>
               <TextInput
-                style={styles.passwordInput}
+                style={[styles.passwordInput, { color: colors.text }]}
                 placeholder="Ingresa tu contraseña actual"
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.placeholder}
                 value={currentPassword}
                 onChangeText={setCurrentPassword}
                 secureTextEntry={!showCurrentPassword}
@@ -208,9 +219,9 @@ const ChangePasswordScreen = ({ navigation }) => {
                 onPress={() => togglePasswordVisibility('current')}
               >
                 {showCurrentPassword ? (
-                  <EyeOff size={20} color="#999" />
+                  <EyeOff size={20} color={colors.textSecondary} />
                 ) : (
-                  <Eye size={20} color="#999" />
+                  <Eye size={20} color={colors.textSecondary} />
                 )}
               </TouchableOpacity>
             </View>
@@ -218,12 +229,17 @@ const ChangePasswordScreen = ({ navigation }) => {
 
           {/* Nueva contraseña */}
           <View style={styles.inputSection}>
-            <Text style={styles.inputLabel}>Nueva contraseña</Text>
-            <View style={styles.passwordContainer}>
+            <Text style={[styles.inputLabel, { color: colors.text }]}>
+              Nueva contraseña
+            </Text>
+            <View style={[styles.passwordContainer, {
+              borderColor: colors.border,
+              backgroundColor: colors.input
+            }]}>
               <TextInput
-                style={styles.passwordInput}
+                style={[styles.passwordInput, { color: colors.text }]}
                 placeholder="Ingresa tu nueva contraseña"
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.placeholder}
                 value={newPassword}
                 onChangeText={setNewPassword}
                 secureTextEntry={!showNewPassword}
@@ -235,9 +251,9 @@ const ChangePasswordScreen = ({ navigation }) => {
                 onPress={() => togglePasswordVisibility('new')}
               >
                 {showNewPassword ? (
-                  <EyeOff size={20} color="#999" />
+                  <EyeOff size={20} color={colors.textSecondary} />
                 ) : (
-                  <Eye size={20} color="#999" />
+                  <Eye size={20} color={colors.textSecondary} />
                 )}
               </TouchableOpacity>
             </View>
@@ -245,7 +261,7 @@ const ChangePasswordScreen = ({ navigation }) => {
             {/* Indicador de fortaleza */}
             {newPassword.length > 0 && (
               <View style={styles.strengthContainer}>
-                <View style={styles.strengthBar}>
+                <View style={[styles.strengthBar, { backgroundColor: colors.border }]}>
                   <View 
                     style={[
                       styles.strengthFill, 
@@ -264,18 +280,21 @@ const ChangePasswordScreen = ({ navigation }) => {
 
             {/* Requisitos de contraseña */}
             {newPassword.length > 0 && (
-              <View style={styles.requirementsContainer}>
-                <Text style={styles.requirementsTitle}>Requisitos:</Text>
+              <View style={[styles.requirementsContainer, { backgroundColor: colors.surfaceVariant }]}>
+                <Text style={[styles.requirementsTitle, { color: colors.text }]}>
+                  Requisitos:
+                </Text>
                 
                 <View style={styles.requirement}>
                   {passwordStrength.validations.length ? (
-                    <Check size={14 * SCALE} color="#4CAF50" />
+                    <Check size={14 * SCALE} color={colors.success} />
                   ) : (
-                    <AlertCircle size={14 * SCALE} color="#999" />
+                    <AlertCircle size={14 * SCALE} color={colors.textSecondary} />
                   )}
                   <Text style={[
                     styles.requirementText,
-                    passwordStrength.validations.length && styles.requirementMet
+                    { color: colors.textSecondary },
+                    passwordStrength.validations.length && { color: colors.success }
                   ]}>
                     Al menos 8 caracteres
                   </Text>
@@ -283,13 +302,14 @@ const ChangePasswordScreen = ({ navigation }) => {
 
                 <View style={styles.requirement}>
                   {passwordStrength.validations.uppercase ? (
-                    <Check size={14 * SCALE} color="#4CAF50" />
+                    <Check size={14 * SCALE} color={colors.success} />
                   ) : (
-                    <AlertCircle size={14 * SCALE} color="#999" />
+                    <AlertCircle size={14 * SCALE} color={colors.textSecondary} />
                   )}
                   <Text style={[
                     styles.requirementText,
-                    passwordStrength.validations.uppercase && styles.requirementMet
+                    { color: colors.textSecondary },
+                    passwordStrength.validations.uppercase && { color: colors.success }
                   ]}>
                     Una letra mayúscula
                   </Text>
@@ -297,13 +317,14 @@ const ChangePasswordScreen = ({ navigation }) => {
 
                 <View style={styles.requirement}>
                   {passwordStrength.validations.lowercase ? (
-                    <Check size={14 * SCALE} color="#4CAF50" />
+                    <Check size={14 * SCALE} color={colors.success} />
                   ) : (
-                    <AlertCircle size={14 * SCALE} color="#999" />
+                    <AlertCircle size={14 * SCALE} color={colors.textSecondary} />
                   )}
                   <Text style={[
                     styles.requirementText,
-                    passwordStrength.validations.lowercase && styles.requirementMet
+                    { color: colors.textSecondary },
+                    passwordStrength.validations.lowercase && { color: colors.success }
                   ]}>
                     Una letra minúscula
                   </Text>
@@ -311,13 +332,14 @@ const ChangePasswordScreen = ({ navigation }) => {
 
                 <View style={styles.requirement}>
                   {passwordStrength.validations.number ? (
-                    <Check size={14 * SCALE} color="#4CAF50" />
+                    <Check size={14 * SCALE} color={colors.success} />
                   ) : (
-                    <AlertCircle size={14 * SCALE} color="#999" />
+                    <AlertCircle size={14 * SCALE} color={colors.textSecondary} />
                   )}
                   <Text style={[
                     styles.requirementText,
-                    passwordStrength.validations.number && styles.requirementMet
+                    { color: colors.textSecondary },
+                    passwordStrength.validations.number && { color: colors.success }
                   ]}>
                     Un número
                   </Text>
@@ -325,13 +347,14 @@ const ChangePasswordScreen = ({ navigation }) => {
 
                 <View style={styles.requirement}>
                   {passwordStrength.validations.special ? (
-                    <Check size={14 * SCALE} color="#4CAF50" />
+                    <Check size={14 * SCALE} color={colors.success} />
                   ) : (
-                    <AlertCircle size={14 * SCALE} color="#999" />
+                    <AlertCircle size={14 * SCALE} color={colors.textSecondary} />
                   )}
                   <Text style={[
                     styles.requirementText,
-                    passwordStrength.validations.special && styles.requirementMet
+                    { color: colors.textSecondary },
+                    passwordStrength.validations.special && { color: colors.success }
                   ]}>
                     Un carácter especial (!@#$%^&*)
                   </Text>
@@ -342,12 +365,17 @@ const ChangePasswordScreen = ({ navigation }) => {
 
           {/* Confirmar contraseña */}
           <View style={styles.inputSection}>
-            <Text style={styles.inputLabel}>Confirmar nueva contraseña</Text>
-            <View style={styles.passwordContainer}>
+            <Text style={[styles.inputLabel, { color: colors.text }]}>
+              Confirmar nueva contraseña
+            </Text>
+            <View style={[styles.passwordContainer, {
+              borderColor: colors.border,
+              backgroundColor: colors.input
+            }]}>
               <TextInput
-                style={styles.passwordInput}
+                style={[styles.passwordInput, { color: colors.text }]}
                 placeholder="Confirma tu nueva contraseña"
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.placeholder}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry={!showConfirmPassword}
@@ -359,9 +387,9 @@ const ChangePasswordScreen = ({ navigation }) => {
                 onPress={() => togglePasswordVisibility('confirm')}
               >
                 {showConfirmPassword ? (
-                  <EyeOff size={20} color="#999" />
+                  <EyeOff size={20} color={colors.textSecondary} />
                 ) : (
-                  <Eye size={20} color="#999" />
+                  <Eye size={20} color={colors.textSecondary} />
                 )}
               </TouchableOpacity>
             </View>
@@ -371,13 +399,17 @@ const ChangePasswordScreen = ({ navigation }) => {
               <View style={styles.matchContainer}>
                 {newPassword === confirmPassword ? (
                   <View style={styles.matchSuccess}>
-                    <Check size={14 * SCALE} color="#4CAF50" />
-                    <Text style={styles.matchSuccessText}>Las contraseñas coinciden</Text>
+                    <Check size={14 * SCALE} color={colors.success} />
+                    <Text style={[styles.matchSuccessText, { color: colors.success }]}>
+                      Las contraseñas coinciden
+                    </Text>
                   </View>
                 ) : (
                   <View style={styles.matchError}>
-                    <AlertCircle size={14 * SCALE} color="#ff4757" />
-                    <Text style={styles.matchErrorText}>Las contraseñas no coinciden</Text>
+                    <AlertCircle size={14 * SCALE} color={colors.error} />
+                    <Text style={[styles.matchErrorText, { color: colors.error }]}>
+                      Las contraseñas no coinciden
+                    </Text>
                   </View>
                 )}
               </View>
@@ -385,22 +417,43 @@ const ChangePasswordScreen = ({ navigation }) => {
           </View>
 
           {/* Consejos de seguridad */}
-          <View style={styles.tipsContainer}>
-            <Text style={styles.tipsTitle}>💡 Consejos de seguridad:</Text>
-            <Text style={styles.tipText}>• Usa una combinación de letras, números y símbolos</Text>
-            <Text style={styles.tipText}>• Evita información personal como nombres o fechas</Text>
-            <Text style={styles.tipText}>• No reutilices contraseñas de otras cuentas</Text>
-            <Text style={styles.tipText}>• Cambia tu contraseña regularmente</Text>
+          <View style={[styles.tipsContainer, { backgroundColor: colors.surfaceVariant }]}>
+            <Text style={[styles.tipsTitle, { color: colors.text }]}>
+              💡 Consejos de seguridad:
+            </Text>
+            <Text style={[styles.tipText, { color: colors.textSecondary }]}>
+              • Usa una combinación de letras, números y símbolos
+            </Text>
+            <Text style={[styles.tipText, { color: colors.textSecondary }]}>
+              • Evita información personal como nombres o fechas
+            </Text>
+            <Text style={[styles.tipText, { color: colors.textSecondary }]}>
+              • No reutilices contraseñas de otras cuentas
+            </Text>
+            <Text style={[styles.tipText, { color: colors.textSecondary }]}>
+              • Cambia tu contraseña regularmente
+            </Text>
           </View>
         </ScrollView>
 
         {/* Botón de cambiar contraseña */}
-        <View style={styles.buttonContainer}>
+        <View style={[styles.buttonContainer, { 
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border 
+        }]}>
           <TouchableOpacity 
             style={[
               styles.changeButton,
+              { 
+                backgroundColor: colors.primary,
+                shadowColor: colors.primary 
+              },
               (!currentPassword || !newPassword || !confirmPassword || 
-               newPassword !== confirmPassword || isLoading) && styles.changeButtonDisabled
+               newPassword !== confirmPassword || isLoading) && { 
+                backgroundColor: colors.textTertiary,
+                shadowOpacity: 0,
+                elevation: 0 
+              }
             ]}
             onPress={handleChangePassword}
             disabled={!currentPassword || !newPassword || !confirmPassword || 
@@ -424,7 +477,6 @@ const ChangePasswordScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   keyboardContainer: {
     flex: 1,
@@ -435,22 +487,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20 * SCALE,
     paddingTop: 10 * SCALE,
-    paddingBottom: 20 * SCALE,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    paddingBottom: 20 * SCALE
   },
   backButton: {
     width: 40 * SCALE,
     height: 40 * SCALE,
     borderRadius: 20 * SCALE,
-    backgroundColor: '#f3f0ff',
     alignItems: 'center',
     justifyContent: 'center',
   },
   title: {
     fontSize: 20 * SCALE,
     fontWeight: 'bold',
-    color: '#333',
   },
   placeholder: {
     width: 40 * SCALE,
@@ -462,7 +510,6 @@ const styles = StyleSheet.create({
   securityInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f3f0ff',
     padding: 12 * SCALE,
     borderRadius: 10 * SCALE,
     marginTop: 16 * SCALE,
@@ -471,7 +518,6 @@ const styles = StyleSheet.create({
   securityText: {
     marginLeft: 12 * SCALE,
     fontSize: 14 * SCALE,
-    color: '#666',
     flex: 1,
   },
   inputSection: {
@@ -480,23 +526,19 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14 * SCALE,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 6 * SCALE,
   },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
     borderRadius: 10 * SCALE,
-    backgroundColor: '#FAFAFA',
     minHeight: 44 * SCALE,
   },
   passwordInput: {
     flex: 1,
     padding: 12 * SCALE,
     fontSize: 14 * SCALE,
-    color: '#333',
   },
   eyeButton: {
     padding: 12 * SCALE,
@@ -508,7 +550,6 @@ const styles = StyleSheet.create({
   },
   strengthBar: {
     height: 4 * SCALE,
-    backgroundColor: '#f0f0f0',
     borderRadius: 2 * SCALE,
     overflow: 'hidden',
     marginBottom: 8 * SCALE,
@@ -524,13 +565,11 @@ const styles = StyleSheet.create({
   requirementsContainer: {
     marginTop: 12 * SCALE,
     padding: 12 * SCALE,
-    backgroundColor: '#f8f9fa',
     borderRadius: 8 * SCALE,
   },
   requirementsTitle: {
     fontSize: 14 * SCALE,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 8 * SCALE,
   },
   requirement: {
@@ -541,10 +580,6 @@ const styles = StyleSheet.create({
   requirementText: {
     marginLeft: 8 * SCALE,
     fontSize: 12 * SCALE,
-    color: '#666',
-  },
-  requirementMet: {
-    color: '#4CAF50',
   },
   matchContainer: {
     marginTop: 8 * SCALE,
@@ -556,7 +591,6 @@ const styles = StyleSheet.create({
   matchSuccessText: {
     marginLeft: 6 * SCALE,
     fontSize: 12 * SCALE,
-    color: '#4CAF50',
   },
   matchError: {
     flexDirection: 'row',
@@ -565,10 +599,8 @@ const styles = StyleSheet.create({
   matchErrorText: {
     marginLeft: 6 * SCALE,
     fontSize: 12 * SCALE,
-    color: '#ff4757',
   },
   tipsContainer: {
-    backgroundColor: '#f8f9fa',
     padding: 12 * SCALE,
     borderRadius: 10 * SCALE,
     marginBottom: 20 * SCALE,
@@ -576,12 +608,10 @@ const styles = StyleSheet.create({
   tipsTitle: {
     fontSize: 14 * SCALE,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 8 * SCALE,
   },
   tipText: {
     fontSize: 12 * SCALE,
-    color: '#666',
     lineHeight: 18 * SCALE,
     marginBottom: 4 * SCALE,
   },
@@ -590,16 +620,13 @@ const styles = StyleSheet.create({
     paddingBottom: 20 * SCALE,
     paddingTop: 10 * SCALE,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
   },
   changeButton: {
-    backgroundColor: '#968ce4',
     borderRadius: 10 * SCALE,
     padding: 14 * SCALE,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    shadowColor: '#968ce4',
     shadowOffset: {
       width: 0,
       height: 3,
@@ -607,11 +634,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
     elevation: 4,
-  },
-  changeButtonDisabled: {
-    backgroundColor: '#ccc',
-    shadowOpacity: 0,
-    elevation: 0,
   },
   changeButtonText: {
     color: '#FFFFFF',

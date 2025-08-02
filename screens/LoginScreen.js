@@ -9,9 +9,11 @@ import {
   SafeAreaView 
 } from 'react-native';
 import { Infinity, Eye, EyeOff } from 'lucide-react-native';
+import { useTheme } from './ThemeContext';
 
-const LoginScreen = ({navigation}) => {
+const LoginScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('login'); // 'login' o 'register'
+  const { colors } = useTheme(); // ✅ Usar el contexto de tema
   
   // Estados para Login
   const [email, setEmail] = useState('');
@@ -43,7 +45,6 @@ const LoginScreen = ({navigation}) => {
       email: registerEmail, 
       password: registerPassword 
     });
-    // Aquí puedes agregar tu lógica de registro
     navigation.navigate('Principal');
   };
 
@@ -61,9 +62,13 @@ const LoginScreen = ({navigation}) => {
     <View style={styles.formContainer}>
       <View style={styles.inputContainer}>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { 
+            borderColor: colors.border,
+            backgroundColor: colors.input,
+            color: colors.text
+          }]}
           placeholder="Correo electrónico"
-          placeholderTextColor="#999"
+          placeholderTextColor={colors.placeholder}
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
@@ -73,11 +78,14 @@ const LoginScreen = ({navigation}) => {
       </View>
 
       <View style={styles.inputContainer}>
-        <View style={styles.passwordContainer}>
+        <View style={[styles.passwordContainer, {
+          borderColor: colors.border,
+          backgroundColor: colors.input
+        }]}>
           <TextInput
-            style={styles.passwordInput}
+            style={[styles.passwordInput, { color: colors.text }]}
             placeholder="Contraseña"
-            placeholderTextColor="#999"
+            placeholderTextColor={colors.placeholder}
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
@@ -87,20 +95,28 @@ const LoginScreen = ({navigation}) => {
             onPress={() => togglePasswordVisibility('login')}
           >
             {showPassword ? (
-              <EyeOff size={20} color="#999" />
+              <EyeOff size={20} color={colors.textSecondary} />
             ) : (
-              <Eye size={20} color="#999" />
+              <Eye size={20} color={colors.textSecondary} />
             )}
           </TouchableOpacity>
         </View>
       </View>
 
-      <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+      <TouchableOpacity 
+        style={[styles.loginButton, { backgroundColor: colors.primary }]} 
+        onPress={handleLogin}
+      >
         <Text style={styles.loginButtonText}>Entrar</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.forgotPassword}  onPress={() => navigation.navigate('ForgotPassword')} >
-        <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
+      <TouchableOpacity 
+        style={styles.forgotPassword}  
+        onPress={() => navigation.navigate('ForgotPassword')}
+      >
+        <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>
+          ¿Olvidaste tu contraseña?
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -109,9 +125,13 @@ const LoginScreen = ({navigation}) => {
     <View style={styles.formContainer}>
       <View style={styles.inputContainer}>
         <TextInput
-          style={styles.input}
+          style={[styles.input, {
+            borderColor: colors.border,
+            backgroundColor: colors.input,
+            color: colors.text
+          }]}
           placeholder="Nombre"
-          placeholderTextColor="#999"
+          placeholderTextColor={colors.placeholder}
           value={registerName}
           onChangeText={setRegisterName}
           autoCapitalize="words"
@@ -120,9 +140,13 @@ const LoginScreen = ({navigation}) => {
 
       <View style={styles.inputContainer}>
         <TextInput
-          style={styles.input}
+          style={[styles.input, {
+            borderColor: colors.border,
+            backgroundColor: colors.input,
+            color: colors.text
+          }]}
           placeholder="Apellido"
-          placeholderTextColor="#999"
+          placeholderTextColor={colors.placeholder}
           value={registerLastName}
           onChangeText={setRegisterLastName}
           autoCapitalize="words"
@@ -131,9 +155,13 @@ const LoginScreen = ({navigation}) => {
 
       <View style={styles.inputContainer}>
         <TextInput
-          style={styles.input}
+          style={[styles.input, {
+            borderColor: colors.border,
+            backgroundColor: colors.input,
+            color: colors.text
+          }]}
           placeholder="Correo electrónico"
-          placeholderTextColor="#999"
+          placeholderTextColor={colors.placeholder}
           value={registerEmail}
           onChangeText={setRegisterEmail}
           keyboardType="email-address"
@@ -143,11 +171,14 @@ const LoginScreen = ({navigation}) => {
       </View>
 
       <View style={styles.inputContainer}>
-        <View style={styles.passwordContainer}>
+        <View style={[styles.passwordContainer, {
+          borderColor: colors.border,
+          backgroundColor: colors.input
+        }]}>
           <TextInput
-            style={styles.passwordInput}
+            style={[styles.passwordInput, { color: colors.text }]}
             placeholder="Contraseña"
-            placeholderTextColor="#999"
+            placeholderTextColor={colors.placeholder}
             value={registerPassword}
             onChangeText={setRegisterPassword}
             secureTextEntry={!showRegisterPassword}
@@ -157,20 +188,23 @@ const LoginScreen = ({navigation}) => {
             onPress={() => togglePasswordVisibility('register')}
           >
             {showRegisterPassword ? (
-              <EyeOff size={20} color="#999" />
+              <EyeOff size={20} color={colors.textSecondary} />
             ) : (
-              <Eye size={20} color="#999" />
+              <Eye size={20} color={colors.textSecondary} />
             )}
           </TouchableOpacity>
         </View>
       </View>
 
       <View style={styles.inputContainer}>
-        <View style={styles.passwordContainer}>
+        <View style={[styles.passwordContainer, {
+          borderColor: colors.border,
+          backgroundColor: colors.input
+        }]}>
           <TextInput
-            style={styles.passwordInput}
+            style={[styles.passwordInput, { color: colors.text }]}
             placeholder="Confirmar contraseña"
-            placeholderTextColor="#999"
+            placeholderTextColor={colors.placeholder}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry={!showConfirmPassword}
@@ -180,50 +214,67 @@ const LoginScreen = ({navigation}) => {
             onPress={() => togglePasswordVisibility('confirm')}
           >
             {showConfirmPassword ? (
-              <EyeOff size={20} color="#999" />
+              <EyeOff size={20} color={colors.textSecondary} />
             ) : (
-              <Eye size={20} color="#999" />
+              <Eye size={20} color={colors.textSecondary} />
             )}
           </TouchableOpacity>
         </View>
       </View>
 
-      <TouchableOpacity style={styles.loginButton} onPress={handleRegister}>
+      <TouchableOpacity 
+        style={[styles.loginButton, { backgroundColor: colors.primary }]} 
+        onPress={handleRegister}
+      >
         <Text style={styles.loginButtonText}>Registrarse</Text>
       </TouchableOpacity>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.content}>
         {/* Logo Section */}
         <View style={styles.logoSection}>
           <Infinity 
             size={60} 
-            color="#333333" 
+            color={colors.text} 
             strokeWidth={2.5}
             style={{ marginBottom: 16 }}
           />
-          <Text style={styles.appName}>HabitFlow</Text>
+          <Text style={[styles.appName, { color: colors.primary }]}>HabitFlow</Text>
         </View>
 
         {/* Tabs */}
-        <View style={styles.tabContainer}>
+        <View style={[styles.tabContainer, { backgroundColor: colors.surfaceVariant }]}>
           <TouchableOpacity 
-            style={[styles.tab, activeTab === 'login' && styles.activeTab]}
+            style={[
+              styles.tab, 
+              activeTab === 'login' && { ...styles.activeTab, backgroundColor: colors.surface }
+            ]}
             onPress={() => setActiveTab('login')}
           >
-            <Text style={[styles.tabText, activeTab === 'login' && styles.activeTabText]}>
+            <Text style={[
+              styles.tabText, 
+              { color: colors.textSecondary },
+              activeTab === 'login' && { ...styles.activeTabText, color: colors.primary }
+            ]}>
               Iniciar Sesión
             </Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={[styles.tab, activeTab === 'register' && styles.activeTab]}
+            style={[
+              styles.tab, 
+              activeTab === 'register' && { ...styles.activeTab, backgroundColor: colors.surface }
+            ]}
             onPress={() => setActiveTab('register')}
           >
-            <Text style={[styles.tabText, activeTab === 'register' && styles.activeTabText]}>
+            <Text style={[
+              styles.tabText, 
+              { color: colors.textSecondary },
+              activeTab === 'register' && { ...styles.activeTabText, color: colors.primary }
+            ]}>
               Registrarse
             </Text>
           </TouchableOpacity>
@@ -239,7 +290,6 @@ const LoginScreen = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   content: {
     flex: 1,
@@ -253,12 +303,10 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#968ce4',
     letterSpacing: 1,
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#F5F5F5',
     borderRadius: 12,
     padding: 4,
     marginBottom: 30,
@@ -270,7 +318,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   activeTab: {
-    backgroundColor: '#FFFFFF',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -283,10 +330,8 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#666',
   },
   activeTabText: {
-    color: '#968ce4',
     fontWeight: '600',
   },
   formContainer: {
@@ -297,26 +342,20 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: '#E0E0E0',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    backgroundColor: '#FAFAFA',
-    color: '#333',
   },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
     borderRadius: 12,
-    backgroundColor: '#FAFAFA',
   },
   passwordInput: {
     flex: 1,
     padding: 16,
     fontSize: 16,
-    color: '#333',
   },
   eyeButton: {
     padding: 16,
@@ -324,7 +363,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loginButton: {
-    backgroundColor: '#968ce4',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -348,7 +386,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   forgotPasswordText: {
-    color: '#968ce4',
     fontSize: 16,
   },
 });
