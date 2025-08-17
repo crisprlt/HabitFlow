@@ -23,5 +23,9 @@ router.post('/frequencies', HabitController.createFrequency);
 router.get('/units', HabitController.getUnits);
 router.post('/units', HabitController.createUnit);
 
+router.put('/categories/:id', HabitController.updateCategory);
+router.put('/frequencies/:id', HabitController.updateFrequency);
+router.put('/units/:id', HabitController.updateUnit);
+
 module.exports = router;
 module.exports = router;

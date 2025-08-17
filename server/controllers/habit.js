@@ -13,11 +13,11 @@ const HabitController = {
       target,
       targetUnit,
       frequency,
-      difficulty,
-      priority,
       reminderEnabled,
       reminderTime
     } = req.body;
+
+    console.log('Datos recibidos:', { userId, name, description, notes, icon, category, target, targetUnit, frequency, reminderEnabled, reminderTime });
 
     const client = await pool.connect();
 
@@ -75,12 +75,23 @@ const HabitController = {
         unitId = newUnit.rows[0].id_unidad_medida;
       }
 
-      // 4. Crear meta
+      console.log('IDs obtenidos:', { categoryId, frequencyId, unitId });
+
+      // 4. Crear meta con validación
+      const targetValue = parseInt(target) || 1;
+      console.log('Creando meta con:', { unitId, targetValue });
+      
       const metaResult = await client.query(
         'INSERT INTO meta (id_unidad_medida, cantidad) VALUES ($1, $2) RETURNING id_meta',
-        [unitId, target]
+        [unitId, targetValue]
       );
+      
+      if (!metaResult.rows[0] || !metaResult.rows[0].id_meta) {
+        throw new Error('No se pudo crear la meta');
+      }
+      
       const metaId = metaResult.rows[0].id_meta;
+      console.log('Meta creada con ID:', metaId);
 
       // 5. Crear hábito
       const habitResult = await client.query(`
@@ -91,9 +102,20 @@ const HabitController = {
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         RETURNING *`,
         [
-          name, description, notes, icon, false, 0, 0,
-          null, reminderEnabled, reminderTime,
-          frequencyId, categoryId, userId, metaId
+          name, 
+          description || '', 
+          notes || '', 
+          icon, 
+          false, 
+          0, 
+          0,
+          null, 
+          reminderEnabled || false, 
+          reminderTime || null,
+          frequencyId, 
+          categoryId, 
+          userId, 
+          metaId
         ]
       );
 
@@ -108,7 +130,12 @@ const HabitController = {
     } catch (error) {
       await client.query('ROLLBACK');
       console.error('Error creando hábito:', error);
-      res.status(500).json({ success: false, message: 'Error interno del servidor' });
+      console.error('Stack trace:', error.stack);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error interno del servidor',
+        error: error.message 
+      });
     } finally {
       client.release();
     }
@@ -516,19 +543,58 @@ const HabitController = {
     }
   },
 
-  // Obtener todas las frecuencias
-  getFrequencies: async (req, res) => {
+  // Actualizar categoría
+  updateCategory: async (req, res) => {
+    const { id } = req.params;
+    const { descripcion } = req.body;
+
     try {
-      const frequenciesResult = await pool.query('SELECT * FROM frecuencia ORDER BY descripcion');
-      
+      const existingCategory = await pool.query(
+        'SELECT * FROM categoria WHERE descripcion = $1 AND id_categoria != $2',
+        [descripcion, id]
+      );
+
+      if (existingCategory.rows.length > 0) {
+        return res.status(400).json({ success: false, message: 'Ya existe una categoría con ese nombre' });
+      }
+
+      const updatedCategory = await pool.query(
+        'UPDATE categoria SET descripcion = $1 WHERE id_categoria = $2 RETURNING *',
+        [descripcion, id]
+      );
+
+      if (updatedCategory.rows.length === 0) {
+        return res.status(404).json({ success: false, message: 'Categoría no encontrada' });
+      }
+
       res.status(200).json({
         success: true,
-        data: { frequencies: frequenciesResult.rows }
+        message: 'Categoría actualizada exitosamente',
+        data: { category: updatedCategory.rows[0] }
       });
 
     } catch (error) {
-      console.error('Error obteniendo frecuencias:', error);
+      console.error('Error actualizando categoría:', error);
       res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    }
+  },
+
+  // Eliminar categoría
+  deleteCategory: async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+      await pool.query('DELETE FROM categoria WHERE id_categoria = $1', [id]);
+      res.status(200).json({ 
+        success: true, 
+        message: 'Categoría eliminada exitosamente' 
+      });
+    } catch (error) {
+      console.error('Error eliminando categoría:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error al eliminar categoría' 
+      });
     }
   },
 
@@ -560,6 +626,77 @@ const HabitController = {
     } catch (error) {
       console.error('Error creando frecuencia:', error);
       res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    }
+  },
+
+  // Obtener todas las frecuencias
+  getFrequencies: async (req, res) => {
+    try {
+      const frequenciesResult = await pool.query('SELECT * FROM frecuencia ORDER BY descripcion');
+      
+      res.status(200).json({
+        success: true,
+        data: { frequencies: frequenciesResult.rows }
+      });
+
+    } catch (error) {
+      console.error('Error obteniendo frecuencias:', error);
+      res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    }
+  },
+
+  // Actualizar frecuencia
+  updateFrequency: async (req, res) => {
+    const { id } = req.params;
+    const { descripcion } = req.body;
+
+    try {
+      const existingFrequency = await pool.query(
+        'SELECT * FROM frecuencia WHERE descripcion = $1 AND id_frecuencia != $2',
+        [descripcion, id]
+      );
+
+      if (existingFrequency.rows.length > 0) {
+        return res.status(400).json({ success: false, message: 'Ya existe una frecuencia con ese nombre' });
+      }
+
+      const updatedFrequency = await pool.query(
+        'UPDATE frecuencia SET descripcion = $1 WHERE id_frecuencia = $2 RETURNING *',
+        [descripcion, id]
+      );
+
+      if (updatedFrequency.rows.length === 0) {
+        return res.status(404).json({ success: false, message: 'Frecuencia no encontrada' });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Frecuencia actualizada exitosamente',
+        data: { frequency: updatedFrequency.rows[0] }
+      });
+
+    } catch (error) {
+      console.error('Error actualizando frecuencia:', error);
+      res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    }
+  },
+
+  // Eliminar frecuencia
+  deleteFrequency: async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+      await pool.query('DELETE FROM frecuencia WHERE id_frecuencia = $1', [id]);
+      res.status(200).json({ 
+        success: true, 
+        message: 'Frecuencia eliminada exitosamente' 
+      });
+    } catch (error) {
+      console.error('Error eliminando frecuencia:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error al eliminar frecuencia' 
+      });
     }
   },
 
@@ -607,6 +744,61 @@ const HabitController = {
     } catch (error) {
       console.error('Error creando unidad de medida:', error);
       res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    }
+  },
+
+  // Actualizar unidad de medida
+  updateUnit: async (req, res) => {
+    const { id } = req.params;
+    const { descripcion } = req.body;
+
+    try {
+      const existingUnit = await pool.query(
+        'SELECT * FROM unidad_medida WHERE descripcion = $1 AND id_unidad_medida != $2',
+        [descripcion, id]
+      );
+
+      if (existingUnit.rows.length > 0) {
+        return res.status(400).json({ success: false, message: 'Ya existe una unidad de medida con ese nombre' });
+      }
+
+      const updatedUnit = await pool.query(
+        'UPDATE unidad_medida SET descripcion = $1 WHERE id_unidad_medida = $2 RETURNING *',
+        [descripcion, id]
+      );
+
+      if (updatedUnit.rows.length === 0) {
+        return res.status(404).json({ success: false, message: 'Unidad de medida no encontrada' });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Unidad de medida actualizada exitosamente',
+        data: { unit: updatedUnit.rows[0] }
+      });
+
+    } catch (error) {
+      console.error('Error actualizando unidad de medida:', error);
+      res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    }
+  },
+
+  // Eliminar unidad de medida
+  deleteUnit: async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+      await pool.query('DELETE FROM unidad_medida WHERE id_unidad_medida = $1', [id]);
+      res.status(200).json({ 
+        success: true, 
+        message: 'Unidad de medida eliminada exitosamente' 
+      });
+    } catch (error) {
+      console.error('Error eliminando unidad de medida:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error al eliminar unidad de medida' 
+      });
     }
   }
 };

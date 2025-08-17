@@ -15,10 +15,13 @@ app.use(cors());
 const rutasGithub = require('./controllers/githubAuth.js');
 const rutasUser = require('./routes/rtUser.js');
 const rutasHabit = require('./routes/rtHabit.js');
+const rutasTracking = require('./routes/rtTracking.js');
 
 app.use('/api/github', rutasGithub);
 app.use('/api/users', rutasUser);
 app.use('/api/habit', rutasHabit);
+app.use('/api/tracking', rutasTracking);
+
 
 app.listen(PORT, () => {
   console.log(`Servidor escuchando en el puerto ${PORT}`);

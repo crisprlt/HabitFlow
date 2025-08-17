@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -10,6 +11,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
+  RefreshControl,
+  ActivityIndicator,
   Clipboard,
 } from 'react-native';
 import {
@@ -20,157 +23,280 @@ import {
   Circle,
   Clock,
   Flame,
+  Edit3,
+  X,
+  User,
+  Check,
+  Copy,
+  // Iconos dinámicos para hábitos
   Droplets,
   Activity,
   BookOpen,
   Brain,
   PenTool,
-  Edit3,
-  X,
-  User,
-  Copy,
-  Check
+  Heart,
+  Coffee,
+  Moon,
+  Sun,
+  Utensils,
+  Music,
+  Camera,
+  Smartphone,
+  Home,
+  Car,
+  Briefcase,
+  GraduationCap,
+  Dumbbell,
+  Pill,
+  Star,
+  Zap,
+  TrendingUp,
+  Smile,
+  ShoppingCart,
+  Book,
+  Palette,
+  Gamepad2,
+  Headphones,
+  Monitor,
+  TreePine,
+  Plane,
+  DollarSign,
+  MessageCircle
 } from 'lucide-react-native';
-import { useTheme } from './ThemeContext'; // Importar el hook del contexto
+import { useTheme } from './ThemeContext';
+import api from '../services/api';
 
 const SCALE = 1.2;
 
+// Mapeo de iconos para renderizar dinámicamente
+const iconMap = {
+  'Ejercicio': Activity,
+  'Cardio': Heart,
+  'Fuerza': Dumbbell,
+  'Agua': Droplets,
+  'Medicina': Pill,
+  'Sueño': Moon,
+  'Mental': Brain,
+  'Progreso': TrendingUp,
+  'Lectura': BookOpen,
+  'Estudio': GraduationCap,
+  'Escritura': PenTool,
+  'Libros': Book,
+  'Cursos': Monitor,
+  'Aprendizaje': Brain,
+  'Trabajo': Briefcase,
+  'Objetivos': Target,
+  'Tiempo': Clock,
+  'Finanzas': DollarSign,
+  'Casa': Home,
+  'Cocina': Utensils,
+  'Café': Coffee,
+  'Compras': ShoppingCart,
+  'Transporte': Car,
+  'Mañana': Sun,
+  'Felicidad': Smile,
+  'Música': Music,
+  'Fotografía': Camera,
+  'Juegos': Gamepad2,
+  'Social': MessageCircle,
+  'Podcast': Headphones,
+  'Arte': Palette,
+  'Favorito': Star,
+  'Energía': Zap,
+  'Naturaleza': TreePine,
+  'Viaje': Plane,
+  'Digital': Smartphone
+};
+
 const PrincipalScreen = ({ navigation }) => {
-  const { colors } = useTheme(); // Solo necesitamos los colores
+  const { colors } = useTheme();
 
-  const [habits, setHabits] = useState([
-    {
-      id: 1,
-      name: "Beber 8 vasos de agua",
-      icon: Droplets,
-      completed: true,
-      streak: 7,
-      target: 8,
-      current: 8,
-      category: "Salud"
-    },
-    {
-      id: 2,
-      name: "Ejercicio matutino",
-      icon: Activity,
-      completed: true,
-      streak: 12,
-      target: 30,
-      current: 30,
-      category: "Fitness"
-    },
-    {
-      id: 3,
-      name: "Leer 20 páginas",
-      icon: BookOpen,
-      completed: false,
-      streak: 5,
-      target: 20,
-      current: 12,
-      category: "Educación"
-    },
-    {
-      id: 4,
-      name: "Meditar",
-      icon: Brain,
-      completed: false,
-      streak: 3,
-      target: 10,
-      current: 0,
-      category: "Bienestar"
-    }
-  ]);
-
-  // Estado para las notas
-  const [notes, setNotes] = useState([
-    {
-      id: 1,
-      text: "Recordar beber más agua después del ejercicio",
-      timestamp: new Date().toLocaleString()
-    },
-    {
-      id: 2,
-      text: "Añadir meditación de 5 minutos antes de dormir",
-      timestamp: new Date().toLocaleString()
-    }
-  ]);
-  
+  // Estados principales
+  const [habits, setHabits] = useState([]);
+  const [notes, setNotes] = useState([]);
+  const [stats, setStats] = useState({
+    total_habitos: 0,
+    habitos_completados: 0,
+    porcentaje_completado: 0
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [newNote, setNewNote] = useState('');
-  
-  // Estados para edición de notas
+
+  // Estados para modal de edición de notas
   const [editingNote, setEditingNote] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editNoteText, setEditNoteText] = useState('');
 
-  const toggleHabit = (habitId) => {
-    setHabits(prev =>
-      prev.map(habit =>
-        habit.id === habitId
-          ? { ...habit, completed: !habit.completed }
-          : habit
-      )
-    );
+  const userId = 1; // Esto debería venir del contexto de autenticación
+
+  // Cargar datos del dashboard
+  const loadDashboardData = async () => {
+    try {
+      const response = await api.get(`/api/tracking/dashboard/${userId}`);
+      
+      if (response.data.success) {
+        const { habits: habitsData, notes: notesData, stats: statsData } = response.data.data;
+        
+        setHabits(habitsData || []);
+        setNotes(notesData || []);
+        setStats(statsData || { total_habitos: 0, habitos_completados: 0, porcentaje_completado: 0 });
+      }
+    } catch (error) {
+      console.error('Error cargando dashboard:', error);
+      Alert.alert('Error', 'No se pudieron cargar los datos');
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
   };
 
-  // Función para agregar una nueva nota
-  const addNote = () => {
-    if (newNote.trim()) {
-      const note = {
-        id: Date.now(),
-        text: newNote.trim(),
-        timestamp: new Date().toLocaleString()
-      };
-      setNotes(prev => [note, ...prev]);
-      setNewNote('');
+  // Cargar datos al montar el componente y cuando la pantalla recibe foco
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('🔄 PrincipalScreen recibió foco - recargando datos...');
+      loadDashboardData();
+    }, [])
+  );
+
+  // Función para refrescar datos
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadDashboardData();
+  };
+
+  // Marcar/desmarcar hábito
+  const toggleHabit = async (habit) => {
+    try {
+      const newCompleted = !habit.completed;
+      
+      // Actualizar UI optimísticamente
+      setHabits(prev => prev.map(h => 
+        h.id_habito === habit.id_habito 
+          ? { ...h, completed: newCompleted, current: newCompleted ? h.target : 0 }
+          : h
+      ));
+
+      // Actualizar en el backend
+      const response = await api.post('/api/tracking/habits/toggle', {
+        habitId: habit.id_habito,
+        userId: userId,
+        completed: newCompleted,
+        valor: newCompleted ? habit.target : 0
+      });
+
+      if (response.data.success) {
+        // Recargar datos completos para asegurar sincronización
+        await loadDashboardData();
+        console.log('Hábito actualizado correctamente');
+      } else {
+        throw new Error('Respuesta no exitosa del servidor');
+      }
+    } catch (error) {
+      console.error('Error actualizando hábito:', error);
+      
+      // Revertir cambio optimista
+      setHabits(prev => prev.map(h => 
+        h.id_habito === habit.id_habito 
+          ? { ...h, completed: habit.completed, current: habit.current }
+          : h
+      ));
+      
+      Alert.alert('Error', 'No se pudo actualizar el hábito. Intenta de nuevo.');
+    }
+  };
+
+  // Agregar nueva nota
+  const addNote = async () => {
+    if (!newNote.trim()) return;
+
+    try {
+      const response = await api.post('/api/tracking/notes', {
+        userId: userId,
+        texto: newNote.trim()
+      });
+
+      if (response.data.success) {
+        setNotes(prev => [response.data.data.note, ...prev]);
+        setNewNote('');
+        Alert.alert('¡Éxito!', 'Nota agregada correctamente');
+      }
+    } catch (error) {
+      console.error('Error creando nota:', error);
+      Alert.alert('Error', 'No se pudo crear la nota');
     }
   };
 
   // Función para copiar nota al portapapeles
   const copyNote = async (note) => {
     try {
-      await Clipboard.setString(note.text);
+      await Clipboard.setString(note.texto);
       Alert.alert('¡Copiado!', 'La nota ha sido copiada al portapapeles');
     } catch (error) {
       Alert.alert('Error', 'No se pudo copiar la nota');
     }
   };
 
-  // Función para abrir modal de edición
+  // Abrir modal de edición
   const openEditModal = (note) => {
     setEditingNote(note);
-    setEditNoteText(note.text);
+    setEditNoteText(note.texto);
     setShowEditModal(true);
   };
 
-  // Función para guardar nota editada
-  const saveEditedNote = () => {
+  // Guardar nota editada
+  const saveEditedNote = async () => {
     if (!editNoteText.trim()) {
       Alert.alert('Error', 'La nota no puede estar vacía');
       return;
     }
 
-    setNotes(prev => prev.map(note => 
-      note.id === editingNote.id 
-        ? { ...note, text: editNoteText.trim(), timestamp: new Date().toLocaleString() }
-        : note
-    ));
+    try {
+      const response = await api.put(`/api/tracking/notes/${editingNote.id_nota}`, {
+        texto: editNoteText.trim(),
+        userId: userId
+      });
 
-    setShowEditModal(false);
-    setEditingNote(null);
-    setEditNoteText('');
-    Alert.alert('¡Guardado!', 'La nota ha sido actualizada');
+      if (response.data.success) {
+        setNotes(prev => prev.map(note => 
+          note.id_nota === editingNote.id_nota 
+            ? { ...note, texto: editNoteText.trim(), fecha_modificacion: new Date().toISOString() }
+            : note
+        ));
+        
+        setShowEditModal(false);
+        setEditingNote(null);
+        setEditNoteText('');
+        Alert.alert('¡Guardado!', 'La nota ha sido actualizada');
+      }
+    } catch (error) {
+      console.error('Error actualizando nota:', error);
+      Alert.alert('Error', 'No se pudo actualizar la nota');
+    }
   };
 
-  // Función para cancelar edición
+  // Cancelar edición
   const cancelEdit = () => {
     setShowEditModal(false);
     setEditingNote(null);
     setEditNoteText('');
   };
 
-  const completedHabits = habits.filter(h => h.completed).length;
-  const totalHabits = habits.length;
-  const completionPercentage = Math.round((completedHabits / totalHabits) * 100);
+  // Función para obtener el icono correcto
+  const getHabitIcon = (iconName) => {
+    const IconComponent = iconMap[iconName] || Target;
+    return IconComponent;
+  };
+
+  // Formatear fecha
+  const formatTimestamp = (timestamp) => {
+    return new Date(timestamp).toLocaleString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   const today = new Date().toLocaleDateString('es-ES', {
     weekday: 'long',
@@ -178,6 +304,15 @@ const PrincipalScreen = ({ navigation }) => {
     month: 'long',
     day: 'numeric'
   });
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Cargando hábitos...</Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView 
@@ -189,8 +324,10 @@ const PrincipalScreen = ({ navigation }) => {
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
+        }
       >
-
         {/* Header */}
         <View style={styles.header}>
           <View>
@@ -199,7 +336,9 @@ const PrincipalScreen = ({ navigation }) => {
           </View>
           <TouchableOpacity
             style={[styles.addButton, { backgroundColor: colors.primary }]}
-            onPress={() => navigation.navigate('AddHabit')}
+            onPress={() => navigation.navigate('AddHabit', { 
+              onHabitCreated: loadDashboardData 
+            })}
           >
             <Plus size={20 * SCALE} color="#fff" />
           </TouchableOpacity>
@@ -209,99 +348,129 @@ const PrincipalScreen = ({ navigation }) => {
         <View style={[styles.progressCard, { backgroundColor: colors.cardCompleted }]}>
           <View style={styles.progressHeader}>
             <Text style={[styles.progressTitle, { color: colors.text }]}>Progreso de Hoy</Text>
-            <Text style={[styles.progressValue, { color: colors.primary }]}>{completionPercentage}%</Text>
+            <Text style={[styles.progressValue, { color: colors.primary }]}>
+              {Math.round(stats.porcentaje_completado || 0)}%
+            </Text>
           </View>
           <View style={[styles.progressBarBackground, { backgroundColor: colors.surfaceVariant }]}>
-            <View style={[styles.progressBarFill, { backgroundColor: colors.primary, width: `${completionPercentage}%` }]} />
+            <View style={[
+              styles.progressBarFill, 
+              { 
+                backgroundColor: colors.primary, 
+                width: `${Math.round(stats.porcentaje_completado || 0)}%` 
+              }
+            ]} />
           </View>
           <Text style={[styles.progressText, { color: colors.textSecondary }]}>
-            {completedHabits} de {totalHabits} hábitos completados
+            {stats.habitos_completados || 0} de {stats.total_habitos || 0} hábitos completados
           </Text>
         </View>
 
         {/* Stats */}
         <View style={styles.statsContainer}>
-          <StatCard icon={Target} label="Racha" value="7 días" colors={colors} />
-          <StatCard icon={Calendar} label="Esta semana" value="85%" colors={colors} />
+          <StatCard icon={Target} label="Total" value={`${stats.total_habitos || 0}`} colors={colors} />
+          <StatCard icon={Calendar} label="Completados" value={`${stats.habitos_completados || 0}`} colors={colors} />
         </View>
 
         {/* Habits */}
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Hábitos</Text>
-        {habits.map(habit => {
-          const Icon = habit.icon;
-          const progress = (habit.current / habit.target) * 100;
+        {habits.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
+              No tienes hábitos aún
+            </Text>
+            <Text style={[styles.emptyStateSubtext, { color: colors.textTertiary }]}>
+              Agrega tu primer hábito para comenzar
+            </Text>
+          </View>
+        ) : (
+          habits.map(habit => {
+            const Icon = getHabitIcon(habit.icono);
+            const progress = habit.target > 0 ? (habit.current / habit.target) * 100 : 0;
 
-          return (
-            <View
-              key={habit.id}
-              style={[
-                styles.habitCard,
-                { 
-                  backgroundColor: colors.card, 
-                  borderColor: colors.border 
-                },
-                habit.completed && { 
-                  backgroundColor: colors.cardCompleted, 
-                  borderColor: colors.border 
-                }
-              ]}
-            >
-              <View style={styles.habitHeader}>
-                <TouchableOpacity onPress={() => toggleHabit(habit.id)}>
-                  {habit.completed ? (
-                    <CheckCircle2 size={24 * SCALE} color={colors.primary} />
-                  ) : (
-                    <Circle size={24 * SCALE} color={colors.textTertiary} />
-                  )}
-                </TouchableOpacity>
-                <View style={styles.habitContent}>
-                  <View style={styles.habitTopRow}>
-                    <View style={[styles.iconContainer, { backgroundColor: colors.surfaceVariant }]}>
-                      <Icon size={16 * SCALE} color={habit.completed ? colors.primary : colors.textSecondary} />
+            return (
+              <View
+                key={habit.id_habito}
+                style={[
+                  styles.habitCard,
+                  { 
+                    backgroundColor: colors.card, 
+                    borderColor: colors.border 
+                  },
+                  habit.completed && { 
+                    backgroundColor: colors.cardCompleted, 
+                    borderColor: colors.border 
+                  }
+                ]}
+              >
+                <View style={styles.habitHeader}>
+                  <TouchableOpacity onPress={() => toggleHabit(habit)}>
+                    {habit.completed ? (
+                      <CheckCircle2 size={24 * SCALE} color={colors.primary} />
+                    ) : (
+                      <Circle size={24 * SCALE} color={colors.textTertiary} />
+                    )}
+                  </TouchableOpacity>
+                  <View style={styles.habitContent}>
+                    <View style={styles.habitTopRow}>
+                      <View style={[styles.iconContainer, { backgroundColor: colors.surfaceVariant }]}>
+                        <Icon size={16 * SCALE} color={habit.completed ? colors.primary : colors.textSecondary} />
+                      </View>
+                      <Text style={[
+                        styles.habitName,
+                        { color: colors.text },
+                        habit.completed && { color: colors.textSecondary, textDecorationLine: 'line-through' }
+                      ]}>
+                        {habit.nombre}
+                      </Text>
                     </View>
-                    <Text style={[
-                      styles.habitName,
-                      { color: colors.text },
-                      habit.completed && { color: colors.textSecondary, textDecorationLine: 'line-through' }
-                    ]}>
-                      {habit.name}
-                    </Text>
-                  </View>
 
-                  <View style={styles.habitDetails}>
-                    <Text style={[styles.category, { 
-                      color: colors.textSecondary, 
-                      backgroundColor: colors.surfaceVariant 
-                    }]}>
-                      {habit.category}
-                    </Text>
-                    <View style={styles.streakRow}>
-                      <Flame size={12 * SCALE} color={colors.warning} />
-                      <Text style={[styles.streakText, { color: colors.text }]}>{habit.streak}</Text>
+                    <View style={styles.habitDetails}>
+                      <Text style={[styles.category, { 
+                        color: colors.textSecondary, 
+                        backgroundColor: colors.surfaceVariant 
+                      }]}>
+                        {habit.categoria}
+                      </Text>
+                      <View style={styles.streakRow}>
+                        <Flame size={12 * SCALE} color={colors.warning} />
+                        <Text style={[styles.streakText, { color: colors.text }]}>{habit.streak || 0}</Text>
+                      </View>
+                      {habit.target > 1 && (
+                        <Text style={[styles.progressNumber, { color: colors.textSecondary }]}>
+                          {habit.current}/{habit.target} {habit.target_unit}
+                        </Text>
+                      )}
+                      <TouchableOpacity 
+                        style={styles.editHabitButton}
+                        onPress={() => navigation.navigate('AddHabit', { 
+                          habitToEdit: habit,
+                          onHabitUpdated: loadDashboardData 
+                        })}
+                      >
+                        <Edit3 size={14 * SCALE} color={colors.primary} />
+                      </TouchableOpacity>
                     </View>
+
                     {habit.target > 1 && (
-                      <Text style={[styles.progressNumber, { color: colors.textSecondary }]}>{habit.current}/{habit.target}</Text>
+                      <View style={[styles.habitProgressBarBackground, { backgroundColor: colors.border }]}>
+                        <View
+                          style={[
+                            styles.habitProgressBarFill,
+                            { 
+                              width: `${Math.min(progress, 100)}%`, 
+                              backgroundColor: habit.completed ? colors.primary : colors.textTertiary 
+                            }
+                          ]}
+                        />
+                      </View>
                     )}
                   </View>
-
-                  {habit.target > 1 && (
-                    <View style={[styles.habitProgressBarBackground, { backgroundColor: colors.border }]}>
-                      <View
-                        style={[
-                          styles.habitProgressBarFill,
-                          { 
-                            width: `${progress}%`, 
-                            backgroundColor: habit.completed ? colors.primary : colors.textTertiary 
-                          }
-                        ]}
-                      />
-                    </View>
-                  )}
                 </View>
               </View>
-            </View>
-          );
-        })}
+            );
+          })
+        )}
 
         {/* Sección de Notas */}
         <View style={styles.notesSection}>
@@ -347,16 +516,18 @@ const PrincipalScreen = ({ navigation }) => {
               </View>
             ) : (
               notes.map(note => (
-                <TouchableOpacity 
-                  key={note.id} 
+                <View 
+                  key={note.id_nota} 
                   style={[styles.noteCard, { 
                     backgroundColor: colors.card,
                     borderColor: colors.border
                   }]}
                 >
                   <View style={styles.noteContent}>
-                    <Text style={[styles.noteText, { color: colors.text }]}>{note.text}</Text>
-                    <Text style={[styles.noteTimestamp, { color: colors.textTertiary }]}>{note.timestamp}</Text>
+                    <Text style={[styles.noteText, { color: colors.text }]}>{note.texto}</Text>
+                    <Text style={[styles.noteTimestamp, { color: colors.textTertiary }]}>
+                      {formatTimestamp(note.fecha_modificacion || note.fecha_creacion)}
+                    </Text>
                   </View>
                   <View style={styles.noteActions}>
                     <TouchableOpacity 
@@ -372,7 +543,7 @@ const PrincipalScreen = ({ navigation }) => {
                       <Edit3 size={16 * SCALE} color={colors.primary} />
                     </TouchableOpacity>
                   </View>
-                </TouchableOpacity>
+                </View>
               ))
             )}
           </View>
@@ -494,6 +665,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16 * SCALE,
+    fontSize: 16 * SCALE,
+  },
   scrollContainer: {
     padding: 16 * SCALE,
   },
@@ -576,6 +755,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 8 * SCALE,
   },
+  emptyState: {
+    padding: 32 * SCALE,
+    alignItems: 'center',
+  },
+  emptyStateText: {
+    fontSize: 16 * SCALE,
+    fontWeight: '500',
+    marginBottom: 4 * SCALE,
+  },
+  emptyStateSubtext: {
+    fontSize: 14 * SCALE,
+  },
   habitCard: {
     borderRadius: 12 * SCALE,
     padding: 12 * SCALE,
@@ -602,6 +793,7 @@ const styles = StyleSheet.create({
   habitName: {
     fontSize: 14 * SCALE,
     fontWeight: '500',
+    flex: 1,
   },
   habitDetails: {
     flexDirection: 'row',
@@ -624,6 +816,13 @@ const styles = StyleSheet.create({
   },
   progressNumber: {
     fontSize: 12 * SCALE,
+  },
+  editHabitButton: {
+    width: 28 * SCALE,
+    height: 28 * SCALE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14 * SCALE,
   },
   habitProgressBarBackground: {
     height: 6 * SCALE,

@@ -1,5 +1,5 @@
-// LoginScreen.js
-import React, { useState } from 'react';
+// LoginScreen.js - Corregido con mejor gestión de GitHub OAuth
+import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, 
   Text, 
@@ -8,11 +8,18 @@ import {
   TouchableOpacity, 
   SafeAreaView,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  LogBox
 } from 'react-native';
 import { Infinity, Eye, EyeOff } from 'lucide-react-native';
 import { useTheme } from './ThemeContext';
-import api from '../services/api'; // Tu archivo de configuración de axios
+import api from '../services/api';
+import { useGitHubAuth, GitHubButton } from '../services/GitHubAuth';
+
+// Ocultar advertencias y errores de consola en pantalla
+if (__DEV__) {
+  LogBox.ignoreAllLogs(true);
+}
 
 const LoginScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('login');
@@ -34,6 +41,83 @@ const LoginScreen = ({ navigation }) => {
   
   // Estados de carga
   const [isLoading, setIsLoading] = useState(false);
+
+  // GitHub Auth Hook
+  const { 
+    isLoading: isGitHubLoading, 
+    user: gitHubUser, 
+    isAuthenticated, 
+    signInWithGitHub,
+    forceNewAuth,
+    request: gitHubRequest 
+  } = useGitHubAuth();
+
+  // Efecto para manejar autenticación exitosa con GitHub
+  useEffect(() => {
+    if (isAuthenticated && gitHubUser) {
+      handleGitHubAuthSuccess(gitHubUser);
+    }
+  }, [isAuthenticated, gitHubUser]);
+
+  const handleGitHubAuthSuccess = async (userData) => {
+    try {
+      console.log('Datos recibidos de GitHub:', userData);
+      
+      // Buscar email principal
+      let primaryEmail = userData.email;
+      if (!primaryEmail && userData.emails && userData.emails.length > 0) {
+        const primaryEmailObj = userData.emails.find(email => email.primary);
+        primaryEmail = primaryEmailObj ? primaryEmailObj.email : userData.emails[0].email;
+      }
+
+      if (!primaryEmail) {
+        Alert.alert(
+          'Error', 
+          'No se pudo obtener el email de tu cuenta de GitHub. Asegúrate de que tu email sea público o usa el registro manual.'
+        );
+        return;
+      }
+
+      // Enviar datos de GitHub al backend para crear/actualizar usuario
+      const response = await api.post('/api/github/auth', {
+        githubId: userData.id,
+        name: userData.name || userData.login,
+        email: primaryEmail,
+        avatarUrl: userData.avatar_url,
+        githubUsername: userData.login
+      });
+
+      console.log('Usuario autenticado con GitHub:', response.data);
+      
+      Alert.alert(
+        'Éxito',
+        `¡Bienvenido, ${userData.name || userData.login}!`,
+        [
+          {
+            text: 'Continuar',
+            onPress: () => navigation.navigate('Principal')
+          }
+        ]
+      );
+      
+    } catch (error) {
+      console.error('Error procesando autenticación de GitHub:', error);
+      
+      let errorMessage = 'Error al procesar la autenticación con GitHub.';
+      
+      if (error.response) {
+        if (error.response.status === 400) {
+          errorMessage = error.response.data?.message || 'Datos inválidos de GitHub.';
+        } else if (error.response.status === 500) {
+          errorMessage = 'Error del servidor. Por favor intenta nuevamente.';
+        }
+      } else if (error.request) {
+        errorMessage = 'Error de conexión. Verifica tu internet.';
+      }
+      
+      Alert.alert('Error', errorMessage);
+    }
+  };
 
   // Función para validar email
   const isValidEmail = (email) => {
@@ -92,8 +176,6 @@ const LoginScreen = ({ navigation }) => {
         // El servidor respondió con un código de error
         if (error.response.status === 401) {
           errorMessage = 'Credenciales incorrectas. Verifica tu email y contraseña.';
-        } else if (error.response.status === 404) {
-          errorMessage = 'Usuario no encontrado.';
         } else if (error.response.data?.message) {
           errorMessage = error.response.data.message;
         }
@@ -173,9 +255,7 @@ const LoginScreen = ({ navigation }) => {
       if (error.response) {
         // El servidor respondió con un código de error
         if (error.response.status === 400) {
-          errorMessage = 'Datos inválidos. Verifica la información ingresada.';
-        } else if (error.response.status === 409) {
-          errorMessage = 'Este email ya está registrado.';
+          errorMessage = error.response.data?.message || 'Datos inválidos. Verifica la información ingresada.';
         } else if (error.response.data?.message) {
           errorMessage = error.response.data.message;
         }
@@ -188,6 +268,41 @@ const LoginScreen = ({ navigation }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleGitHubLogin = async () => {
+    if (!gitHubRequest) {
+      Alert.alert('Error', 'GitHub OAuth no está configurado correctamente');
+      return;
+    }
+
+    try {
+      await signInWithGitHub();
+    } catch (error) {
+      console.error('Error iniciando sesión con GitHub:', error);
+      Alert.alert('Error', 'Error al iniciar sesión con GitHub');
+    }
+  };
+
+  const handleForceNewGitHubAuth = async () => {
+    Alert.alert(
+      'Nueva Sesión de GitHub',
+      '¿Quieres limpiar la sesión actual y crear una nueva?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Sí, Nueva Sesión', 
+          onPress: async () => {
+            try {
+              await forceNewAuth();
+            } catch (error) {
+              console.error('Error en nueva autenticación:', error);
+              Alert.alert('Error', 'Error al iniciar nueva sesión');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const togglePasswordVisibility = (field) => {
@@ -216,7 +331,7 @@ const LoginScreen = ({ navigation }) => {
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
-          editable={!isLoading}
+          editable={!isLoading && !isGitHubLoading}
         />
       </View>
 
@@ -232,12 +347,12 @@ const LoginScreen = ({ navigation }) => {
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
-            editable={!isLoading}
+            editable={!isLoading && !isGitHubLoading}
           />
           <TouchableOpacity 
             style={styles.eyeButton}
             onPress={() => togglePasswordVisibility('login')}
-            disabled={isLoading}
+            disabled={isLoading || isGitHubLoading}
           >
             {showPassword ? (
               <EyeOff size={20} color={colors.textSecondary} />
@@ -251,10 +366,10 @@ const LoginScreen = ({ navigation }) => {
       <TouchableOpacity 
         style={[
           styles.loginButton, 
-          { backgroundColor: isLoading ? colors.textSecondary : colors.primary }
+          { backgroundColor: (isLoading || isGitHubLoading) ? colors.textSecondary : colors.primary }
         ]} 
         onPress={handleLogin}
-        disabled={isLoading}
+        disabled={isLoading || isGitHubLoading}
       >
         {isLoading ? (
           <View style={styles.loadingContainer}>
@@ -268,10 +383,25 @@ const LoginScreen = ({ navigation }) => {
         )}
       </TouchableOpacity>
 
+      {/* Separador */}
+      <View style={styles.separatorContainer}>
+        <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
+        <Text style={[styles.separatorText, { color: colors.textSecondary }]}>o</Text>
+        <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
+      </View>
+
+      {/* Botón de GitHub */}
+      <GitHubButton 
+        onPress={handleGitHubLogin}
+        onForceNewAuth={handleForceNewGitHubAuth}
+        isLoading={isGitHubLoading}
+        colors={colors}
+      />
+
       <TouchableOpacity 
         style={styles.forgotPassword}  
         onPress={() => navigation.navigate('ForgotPassword')}
-        disabled={isLoading}
+        disabled={isLoading || isGitHubLoading}
       >
         <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>
           ¿Olvidaste tu contraseña?
@@ -294,7 +424,7 @@ const LoginScreen = ({ navigation }) => {
           value={registerName}
           onChangeText={setRegisterName}
           autoCapitalize="words"
-          editable={!isLoading}
+          editable={!isLoading && !isGitHubLoading}
         />
       </View>
 
@@ -310,7 +440,7 @@ const LoginScreen = ({ navigation }) => {
           value={registerLastName}
           onChangeText={setRegisterLastName}
           autoCapitalize="words"
-          editable={!isLoading}
+          editable={!isLoading && !isGitHubLoading}
         />
       </View>
 
@@ -328,7 +458,7 @@ const LoginScreen = ({ navigation }) => {
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
-          editable={!isLoading}
+          editable={!isLoading && !isGitHubLoading}
         />
       </View>
 
@@ -344,12 +474,12 @@ const LoginScreen = ({ navigation }) => {
             value={registerPassword}
             onChangeText={setRegisterPassword}
             secureTextEntry={!showRegisterPassword}
-            editable={!isLoading}
+            editable={!isLoading && !isGitHubLoading}
           />
           <TouchableOpacity 
             style={styles.eyeButton}
             onPress={() => togglePasswordVisibility('register')}
-            disabled={isLoading}
+            disabled={isLoading || isGitHubLoading}
           >
             {showRegisterPassword ? (
               <EyeOff size={20} color={colors.textSecondary} />
@@ -372,12 +502,12 @@ const LoginScreen = ({ navigation }) => {
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry={!showConfirmPassword}
-            editable={!isLoading}
+            editable={!isLoading && !isGitHubLoading}
           />
           <TouchableOpacity 
             style={styles.eyeButton}
             onPress={() => togglePasswordVisibility('confirm')}
-            disabled={isLoading}
+            disabled={isLoading || isGitHubLoading}
           >
             {showConfirmPassword ? (
               <EyeOff size={20} color={colors.textSecondary} />
@@ -391,10 +521,10 @@ const LoginScreen = ({ navigation }) => {
       <TouchableOpacity 
         style={[
           styles.loginButton, 
-          { backgroundColor: isLoading ? colors.textSecondary : colors.primary }
+          { backgroundColor: (isLoading || isGitHubLoading) ? colors.textSecondary : colors.primary }
         ]} 
         onPress={handleRegister}
-        disabled={isLoading}
+        disabled={isLoading || isGitHubLoading}
       >
         {isLoading ? (
           <View style={styles.loadingContainer}>
@@ -407,6 +537,21 @@ const LoginScreen = ({ navigation }) => {
           <Text style={styles.loginButtonText}>Registrarse</Text>
         )}
       </TouchableOpacity>
+
+      {/* Separador */}
+      <View style={styles.separatorContainer}>
+        <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
+        <Text style={[styles.separatorText, { color: colors.textSecondary }]}>o</Text>
+        <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
+      </View>
+
+      {/* Botón de GitHub */}
+      <GitHubButton 
+        onPress={handleGitHubLogin}
+        onForceNewAuth={handleForceNewGitHubAuth}
+        isLoading={isGitHubLoading}
+        colors={colors}
+      />
     </View>
   );
 
@@ -432,7 +577,7 @@ const LoginScreen = ({ navigation }) => {
               activeTab === 'login' && { ...styles.activeTab, backgroundColor: colors.surface }
             ]}
             onPress={() => setActiveTab('login')}
-            disabled={isLoading}
+            disabled={isLoading || isGitHubLoading}
           >
             <Text style={[
               styles.tabText, 
@@ -449,7 +594,7 @@ const LoginScreen = ({ navigation }) => {
               activeTab === 'register' && { ...styles.activeTab, backgroundColor: colors.surface }
             ]}
             onPress={() => setActiveTab('register')}
-            disabled={isLoading}
+            disabled={isLoading || isGitHubLoading}
           >
             <Text style={[
               styles.tabText, 
@@ -565,6 +710,20 @@ const styles = StyleSheet.create({
   loadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  separatorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  separatorLine: {
+    flex: 1,
+    height: 1,
+  },
+  separatorText: {
+    marginHorizontal: 16,
+    fontSize: 16,
+    fontWeight: '500',
   },
   forgotPassword: {
     alignItems: 'center',
