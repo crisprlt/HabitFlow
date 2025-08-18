@@ -14,7 +14,8 @@ import {
     Platform,
     Keyboard,
     TouchableWithoutFeedback,
-    Dimensions
+    Dimensions,
+    ActivityIndicator
 } from 'react-native';
 import {
     ArrowLeft,
@@ -65,6 +66,7 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from './ThemeContext';
 import api from '../services/api';
+import * as SecureStore from 'expo-secure-store'; // ✅ Agregar import
 
 const SCALE = 1.2;
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -79,6 +81,10 @@ const AddHabitScreen = ({ navigation, route }) => {
     // Determinar si estamos editando o creando
     const habitToEdit = route.params?.habitToEdit;
     const isEditing = !!habitToEdit;
+
+    // ✅ Estado para userId
+    const [userId, setUserId] = useState(null);
+    const [userIdLoading, setUserIdLoading] = useState(true);
 
     // Estados básicos del hábito
     const [habitName, setHabitName] = useState(habitToEdit?.nombre || '');
@@ -114,6 +120,39 @@ const AddHabitScreen = ({ navigation, route }) => {
     const [newItemName, setNewItemName] = useState('');
     const [editingItem, setEditingItem] = useState(null);
     const [editItemName, setEditItemName] = useState('');
+
+    // ✅ Obtener userId del SecureStore al cargar el componente
+    useEffect(() => {
+        const getUserId = async () => {
+            try {
+                const storedUserId = await SecureStore.getItemAsync('user_id');
+                console.log('✅ AddHabitScreen - User ID obtenido del storage:', storedUserId);
+                
+                if (storedUserId) {
+                    setUserId(storedUserId);
+                } else {
+                    console.log('❌ No se encontró user_id en SecureStore');
+                    Alert.alert(
+                        'Sesión expirada',
+                        'Por favor, inicia sesión nuevamente',
+                        [
+                            {
+                                text: 'OK',
+                                onPress: () => navigation.navigate('Login')
+                            }
+                        ]
+                    );
+                }
+            } catch (error) {
+                console.error('❌ Error obteniendo userId del storage:', error);
+                Alert.alert('Error', 'Error al obtener información de usuario');
+            } finally {
+                setUserIdLoading(false);
+            }
+        };
+
+        getUserId();
+    }, []);
 
     // Listeners para el teclado
     useEffect(() => {
@@ -188,13 +227,16 @@ const AddHabitScreen = ({ navigation, route }) => {
         ]
     };
 
-    // Obtener datos del backend al cargar
+    // ✅ Cargar datos iniciales solo cuando tenemos userId
     useEffect(() => {
-        loadInitialData();
-    }, []);
+        if (userId) {
+            loadInitialData();
+        }
+    }, [userId]);
 
     const loadInitialData = async () => {
         try {
+            console.log('🔄 Cargando datos iniciales para userId:', userId);
             const [categoriesRes, frequenciesRes, unitsRes] = await Promise.all([
                 api.get('/api/habit/categories'),
                 api.get('/api/habit/frequencies'),
@@ -204,15 +246,36 @@ const AddHabitScreen = ({ navigation, route }) => {
             setCategories(categoriesRes.data.data.categories || []);
             setFrequencies(frequenciesRes.data.data.frequencies || []);
             setUnits(unitsRes.data.data.units || []);
+            
+            console.log('✅ Datos iniciales cargados:', {
+                categories: categoriesRes.data.data.categories?.length || 0,
+                frequencies: frequenciesRes.data.data.frequencies?.length || 0,
+                units: unitsRes.data.data.units?.length || 0
+            });
         } catch (error) {
             console.error('Error cargando datos:', error);
-            Alert.alert('Error', 'No se pudieron cargar los datos iniciales');
+            
+            // Si el error es de autenticación, redirigir al login
+            if (error.response?.status === 401) {
+                Alert.alert(
+                    'Sesión expirada',
+                    'Por favor, inicia sesión nuevamente',
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => navigation.navigate('Login')
+                        }
+                    ]
+                );
+            } else {
+                Alert.alert('Error', 'No se pudieron cargar los datos iniciales');
+            }
         }
     };
 
     // Crear nuevo elemento (categoría, frecuencia o unidad)
     const createNewItem = async (type, name) => {
-        if (!name.trim()) {
+        if (!name.trim() || !userId) {
             Alert.alert('Error', 'Por favor ingresa un nombre');
             return;
         }
@@ -244,7 +307,7 @@ const AddHabitScreen = ({ navigation, route }) => {
 
     // Editar elemento existente
     const editItem = async (type, id, newName) => {
-        if (!newName.trim()) {
+        if (!newName.trim() || !userId) {
             Alert.alert('Error', 'Por favor ingresa un nombre');
             return;
         }
@@ -283,6 +346,8 @@ const AddHabitScreen = ({ navigation, route }) => {
 
     // Eliminar elemento
     const deleteItem = async (type, id) => {
+        if (!userId) return;
+
         Alert.alert(
             'Confirmar eliminación',
             '¿Estás seguro de que quieres eliminar este elemento?',
@@ -307,6 +372,8 @@ const AddHabitScreen = ({ navigation, route }) => {
 
     // Eliminar hábito
     const deleteHabit = async () => {
+        if (!userId) return;
+
         Alert.alert(
             'Eliminar Hábito',
             '¿Estás seguro de que quieres eliminar este hábito? Esta acción no se puede deshacer.',
@@ -353,6 +420,11 @@ const AddHabitScreen = ({ navigation, route }) => {
     };
 
     const validateAndSave = async () => {
+        if (!userId) {
+            Alert.alert('Error', 'No se encontró información de usuario');
+            return;
+        }
+
         // Validaciones
         if (!habitName.trim()) {
             Alert.alert('Error', 'Por favor ingresa un nombre para el hábito');
@@ -373,7 +445,7 @@ const AddHabitScreen = ({ navigation, route }) => {
 
         try {
             const habitData = {
-                userId: 1,
+                userId: userId, // ✅ Usar userId del SecureStore
                 name: habitName.trim(),
                 description: habitDescription.trim(),
                 notes: notes.trim(),
@@ -385,6 +457,8 @@ const AddHabitScreen = ({ navigation, route }) => {
                 reminderEnabled: reminderEnabled,
                 reminderTime: reminderEnabled ? reminderTime.toTimeString().slice(0, 5) : null
             };
+
+            console.log('💾 Guardando hábito:', { ...habitData, userId: '***' });
 
             let response;
             if (isEditing) {
@@ -401,12 +475,56 @@ const AddHabitScreen = ({ navigation, route }) => {
             }
         } catch (error) {
             console.error('Error guardando hábito:', error);
-            const message = error.response?.data?.message || 'Error al guardar el hábito';
-            Alert.alert('Error', message);
+            
+            // Si el error es de autenticación, redirigir al login
+            if (error.response?.status === 401) {
+                Alert.alert(
+                    'Sesión expirada',
+                    'Por favor, inicia sesión nuevamente',
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => navigation.navigate('Login')
+                        }
+                    ]
+                );
+            } else {
+                const message = error.response?.data?.message || 'Error al guardar el hábito';
+                Alert.alert('Error', message);
+            }
         } finally {
             setIsLoading(false);
         }
     };
+
+    // ✅ Mostrar loading mientras se obtiene el userId
+    if (userIdLoading) {
+        return (
+            <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+                    Verificando sesión...
+                </Text>
+            </View>
+        );
+    }
+
+    // ✅ Si no hay userId, mostrar error
+    if (!userId) {
+        return (
+            <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
+                <Text style={[styles.errorText, { color: colors.error }]}>
+                    No se encontró sesión de usuario
+                </Text>
+                <TouchableOpacity
+                    style={[styles.retryButton, { backgroundColor: colors.primary }]}
+                    onPress={() => navigation.navigate('Login')}
+                >
+                    <Text style={styles.retryButtonText}>Ir a Login</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
 
     // Modal para mantenimiento de elementos con diseño mejorado y más grande
     const renderMaintenanceModal = (title, items, type, showModal, setShowModal) => (
@@ -946,6 +1064,29 @@ const AddHabitScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+    },
+    centered: {
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loadingText: {
+        marginTop: 16 * SCALE,
+        fontSize: 16 * SCALE,
+    },
+    errorText: {
+        fontSize: 16 * SCALE,
+        textAlign: 'center',
+        marginBottom: 20 * SCALE,
+    },
+    retryButton: {
+        paddingHorizontal: 20 * SCALE,
+        paddingVertical: 10 * SCALE,
+        borderRadius: 8 * SCALE,
+    },
+    retryButtonText: {
+        color: '#fff',
+        fontSize: 16 * SCALE,
+        fontWeight: '500',
     },
     header: {
         flexDirection: 'row',

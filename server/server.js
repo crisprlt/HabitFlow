@@ -16,11 +16,16 @@ const rutasGithub = require('./controllers/githubAuth.js');
 const rutasUser = require('./routes/rtUser.js');
 const rutasHabit = require('./routes/rtHabit.js');
 const rutasTracking = require('./routes/rtTracking.js');
+const rutasCalendar = require('./routes/rtCalendar.js');
+const rutasOther = require('./routes/rtOther.js');
+
 
 app.use('/api/github', rutasGithub);
 app.use('/api/users', rutasUser);
 app.use('/api/habit', rutasHabit);
 app.use('/api/tracking', rutasTracking);
+app.use('/api/calendar', rutasCalendar);
+app.use('/api/other', rutasOther);
 
 
 app.listen(PORT, () => {

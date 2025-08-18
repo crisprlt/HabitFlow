@@ -29,6 +29,10 @@
       "expo-localization",
       "expo-web-browser",
       "expo-secure-store"
-    ]
+    ],
+        "extra": {
+      "API_URL": "http://192.168.1.2:3000"
+    }
   }
+
 }

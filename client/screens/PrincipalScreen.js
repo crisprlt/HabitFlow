@@ -65,6 +65,7 @@ import {
 } from 'lucide-react-native';
 import { useTheme } from './ThemeContext';
 import api from '../services/api';
+import * as SecureStore from 'expo-secure-store'; // ✅ Agregar import
 
 const SCALE = 1.2;
 
@@ -122,21 +123,63 @@ const PrincipalScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [newNote, setNewNote] = useState('');
+  const [userId, setUserId] = useState(null); // ✅ Estado para userId
 
   // Estados para modal de edición de notas
   const [editingNote, setEditingNote] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editNoteText, setEditNoteText] = useState('');
 
-  const userId = 1; // Esto debería venir del contexto de autenticación
+  // ✅ Obtener userId del SecureStore al cargar el componente
+  useEffect(() => {
+    const getUserId = async () => {
+      try {
+        const storedUserId = await SecureStore.getItemAsync('user_id');
+        console.log('✅ PrincipalScreen - User ID obtenido del storage:', storedUserId);
+        
+        if (storedUserId) {
+          setUserId(storedUserId);
+        } else {
+          console.log('❌ No se encontró user_id en SecureStore');
+          Alert.alert(
+            'Sesión expirada',
+            'Por favor, inicia sesión nuevamente',
+            [
+              {
+                text: 'OK',
+                onPress: () => navigation.navigate('Login')
+              }
+            ]
+          );
+        }
+      } catch (error) {
+        console.error('❌ Error obteniendo userId del storage:', error);
+        Alert.alert('Error', 'Error al obtener información de usuario');
+      }
+    };
+
+    getUserId();
+  }, []);
 
   // Cargar datos del dashboard
   const loadDashboardData = async () => {
+    if (!userId) {
+      console.log('No hay userId disponible para cargar datos');
+      return;
+    }
+
     try {
+      console.log('🔄 Cargando datos del dashboard para userId:', userId);
       const response = await api.get(`/api/tracking/dashboard/${userId}`);
       
       if (response.data.success) {
         const { habits: habitsData, notes: notesData, stats: statsData } = response.data.data;
+        
+        console.log('✅ Datos cargados:', {
+          habits: habitsData?.length || 0,
+          notes: notesData?.length || 0,
+          stats: statsData
+        });
         
         setHabits(habitsData || []);
         setNotes(notesData || []);
@@ -144,29 +187,49 @@ const PrincipalScreen = ({ navigation }) => {
       }
     } catch (error) {
       console.error('Error cargando dashboard:', error);
-      Alert.alert('Error', 'No se pudieron cargar los datos');
+      
+      // Si el error es de autenticación, redirigir al login
+      if (error.response?.status === 401) {
+        Alert.alert(
+          'Sesión expirada',
+          'Por favor, inicia sesión nuevamente',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.navigate('Login')
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'No se pudieron cargar los datos');
+      }
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
   };
 
-  // Cargar datos al montar el componente y cuando la pantalla recibe foco
+  // ✅ Cargar datos cuando se obtenga el userId y cuando la pantalla recibe foco
   useFocusEffect(
     React.useCallback(() => {
-      console.log('🔄 PrincipalScreen recibió foco - recargando datos...');
-      loadDashboardData();
-    }, [])
+      console.log('🔄 PrincipalScreen recibió foco - userId:', userId);
+      if (userId) {
+        loadDashboardData();
+      }
+    }, [userId])
   );
 
   // Función para refrescar datos
   const onRefresh = () => {
+    if (!userId) return;
     setRefreshing(true);
     loadDashboardData();
   };
 
   // Marcar/desmarcar hábito
   const toggleHabit = async (habit) => {
+    if (!userId) return;
+
     try {
       const newCompleted = !habit.completed;
       
@@ -208,7 +271,7 @@ const PrincipalScreen = ({ navigation }) => {
 
   // Agregar nueva nota
   const addNote = async () => {
-    if (!newNote.trim()) return;
+    if (!newNote.trim() || !userId) return;
 
     try {
       const response = await api.post('/api/tracking/notes', {
@@ -246,7 +309,7 @@ const PrincipalScreen = ({ navigation }) => {
 
   // Guardar nota editada
   const saveEditedNote = async () => {
-    if (!editNoteText.trim()) {
+    if (!editNoteText.trim() || !userId) {
       Alert.alert('Error', 'La nota no puede estar vacía');
       return;
     }
@@ -305,11 +368,14 @@ const PrincipalScreen = ({ navigation }) => {
     day: 'numeric'
   });
 
-  if (isLoading) {
+  // ✅ Mostrar loading mientras se obtiene el userId o se cargan los datos
+  if (isLoading || !userId) {
     return (
       <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Cargando hábitos...</Text>
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+          {!userId ? 'Verificando sesión...' : 'Cargando hábitos...'}
+        </Text>
       </View>
     );
   }
@@ -613,7 +679,7 @@ const PrincipalScreen = ({ navigation }) => {
         <NavItem
           icon={Calendar}
           label="Calendario"
-          onPress={() => navigation.navigate('HabitCalendar')}
+          onPress={() => navigation.navigate('HabitCalendar')} // ✅ Ya no necesita pasar userId
           colors={colors}
         />
         <NavItem 

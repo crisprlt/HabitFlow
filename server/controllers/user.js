@@ -94,7 +94,7 @@ const UserController = {
   // Obtener perfil
   getProfile: async (req, res) => {
     try {
-      const { userId } = req.body;
+    const { userId } = req.params; // Cambiar de req.body a req.query
       
       const userResult = await pool.query(
         'SELECT id_usuario, nombre, apellido, correo FROM usuario WHERE id_usuario = $1',
@@ -121,6 +121,61 @@ const UserController = {
       });
     }
   },
+  // Actualizar perfil (nombre, apellido, email)
+updateProfile: async (req, res) => {
+  const { userId, name, lastName, email } = req.body;
+
+  try {
+    // Verificar que el usuario existe
+    const userExists = await pool.query('SELECT * FROM usuario WHERE id_usuario = $1', [userId]);
+    
+    if (userExists.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Usuario no encontrado' 
+      });
+    }
+
+    // Verificar si el nuevo email ya está en uso por otro usuario
+    if (email) {
+      const emailExists = await pool.query(
+        'SELECT * FROM usuario WHERE correo = $1 AND id_usuario != $2', 
+        [email, userId]
+      );
+      
+      if (emailExists.rows.length > 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'El correo ya está registrado por otro usuario' 
+        });
+      }
+    }
+
+    // Actualizar los datos del usuario
+    const updatedUser = await pool.query(
+      `UPDATE usuario 
+       SET nombre = $1, apellido = $2, correo = $3 
+       WHERE id_usuario = $4 
+       RETURNING id_usuario, nombre, apellido, correo`,
+      [name, lastName, email, userId]
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Perfil actualizado exitosamente',
+      data: {
+        user: updatedUser.rows[0]
+      }
+    });
+
+  } catch (error) {
+    console.error('Error actualizando perfil:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error interno del servidor' 
+    });
+  }
+},
 
   // Cambiar contraseña
   changePassword: async (req, res) => {
@@ -160,6 +215,7 @@ const UserController = {
       });
     }
   }
+  
 };
 
 module.exports = UserController;

@@ -1,15 +1,17 @@
-// services/GitHubAuth.js - Servicio unificado completo con limpieza de sesión
+// services/GitHubAuth.js - FIXED NAVIGATION ISSUE
 import React, { useEffect, useState } from 'react';
 import { TouchableOpacity, Text, View, StyleSheet, Alert } from 'react-native';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import * as SecureStore from 'expo-secure-store';
-import { makeRedirectUri } from 'expo-auth-session';
 import { Github } from 'lucide-react-native';
+import Constants from 'expo-constants';
+
+const API_BASE_URL = Constants.expoConfig?.extra?.API_URL;
+console.log('API_BASE_URL:', API_BASE_URL);
 
 // Configuración OAuth de GitHub
 const GITHUB_CLIENT_ID = 'Ov23liy6c6sRX5zYCac7';
-const GITHUB_CLIENT_SECRET = 'ca242adfa3d3a028ac6f173d3b9c5499dae2eed7';
 
 // Configurar el redirect URI para Expo Go
 const redirectUri = 'exp://192.168.1.4:8081'
@@ -25,106 +27,183 @@ const discovery = {
 
 WebBrowser.maybeCompleteAuthSession();
 
-// Servicio de autenticación con GitHub
+// Servicio de autenticación con GitHub (sin cambios)
 class GitHubAuthService {
-  // Limpiar caché del navegador y cookies
   static async clearBrowserSession() {
     try {
-      // Esto limpia las cookies y datos del navegador
       await WebBrowser.clearWebBrowserDataAsync({
         dataTypes: WebBrowser.ClearDataType.ALL,
       });
-      
       console.log('Sesión del navegador limpiada');
     } catch (error) {
       console.log('No se pudo limpiar la sesión del navegador:', error);
     }
   }
 
-  // Intercambiar código por token de acceso
-static async exchangeCodeForToken(code) {
-  try {
-    const tokenResponse = await fetch(discovery.tokenEndpoint, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'YourApp/1.0', // GitHub requiere User-Agent
-      },
-      body: new URLSearchParams({
-        client_id: GITHUB_CLIENT_ID,
-        client_secret: GITHUB_CLIENT_SECRET,
-        code: code,
-        redirect_uri: redirectUri,
-      }).toString(),
-    });
-
-    // Verificar que la respuesta sea exitosa
-    if (!tokenResponse.ok) {
-      const errorText = await tokenResponse.text();
-      console.error('Error response from GitHub:', {
-        status: tokenResponse.status,
-        statusText: tokenResponse.statusText,
-        body: errorText
-      });
-      throw new Error(`GitHub token request failed: ${tokenResponse.status} - ${errorText}`);
-    }
-
-    const tokenData = await tokenResponse.json();
-    
-    console.log('Token response from GitHub:', tokenData); // Para debugging
-    
-    // Verificar diferentes posibles respuestas de error
-    if (tokenData.error) {
-      throw new Error(`GitHub OAuth Error: ${tokenData.error} - ${tokenData.error_description || ''}`);
-    }
-    
-    if (tokenData.access_token) {
-      // Guardar token de forma segura
-      await SecureStore.setItemAsync('github_access_token', tokenData.access_token);
+  static async exchangeCodeForToken(code, codeVerifier) {
+    try {
+      console.log('🔍 PKCE DEBUG - Intercambiando código por token...');
+      console.log('🔍 PKCE DEBUG - Code presente:', !!code);
+      console.log('🔍 PKCE DEBUG - CodeVerifier presente:', !!codeVerifier);
+      console.log('🔍 PKCE DEBUG - CodeVerifier length:', codeVerifier?.length);
       
-      // También guardar otros datos útiles si están presentes
-      if (tokenData.refresh_token) {
-        await SecureStore.setItemAsync('github_refresh_token', tokenData.refresh_token);
+      if (!API_BASE_URL) {
+        throw new Error('API_BASE_URL no está configurado');
+      }
+
+      if (!codeVerifier) {
+        throw new Error('Code verifier es requerido para PKCE');
+      }
+
+      if (codeVerifier.length < 43 || codeVerifier.length > 128) {
+        console.warn('⚠️ Code verifier length fuera del rango esperado:', codeVerifier.length);
+        console.warn('⚠️ RFC 7636 requiere entre 43-128 caracteres');
+      }
+
+      const url = `${API_BASE_URL}/api/github/auth`;
+      const requestBody = {
+        code: code,
+        code_verifier: codeVerifier,
+        debug_info: {
+          code_verifier_length: codeVerifier.length,
+          timestamp: Date.now(),
+        }
+      };
+
+      console.log('🔍 PKCE DEBUG - URL del endpoint:', url);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      console.log('✅ Respuesta recibida - Status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Error response from backend:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        
+        let errorData = {};
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          console.log('No se pudo parsear el error como JSON');
+        }
+        
+        if (errorData.error === 'invalid_grant' || response.status === 400) {
+          throw new Error(
+            `Error PKCE: ${errorData.error_description || 'Code verifier inválido'}. Intenta cerrar la app completamente y volver a intentar.`
+          );
+        }
+        
+        throw new Error(
+          `Backend auth request failed: ${response.status} - ${
+            errorData.error || errorData.message || errorText || response.statusText
+          }`
+        );
+      }
+
+      const responseData = await response.json();
+      console.log('✅ Response from backend:', responseData);
+      
+      if (!responseData.success) {
+        throw new Error(`Backend Error: ${responseData.error || 'Error desconocido'}`);
       }
       
-      return tokenData;
-    } else {
-      throw new Error('No se recibió token de acceso en la respuesta: ' + JSON.stringify(tokenData));
-    }
-  } catch (error) {
-    console.error('Error intercambiando código por token:', error);
-    
-    // Si es un error de red, proporcionar más información
-    if (error.name === 'TypeError' && error.message.includes('Network')) {
-      throw new Error('Error de conexión. Verifica tu conexión a internet.');
-    }
-    
-    throw error;
-  }
-}
+      if (!responseData.access_token) {
+        throw new Error('No se recibió access_token en la respuesta del backend');
+      }
 
-  // Obtener información del usuario
+      // Guardar tokens de forma segura
+      await SecureStore.setItemAsync('github_access_token', responseData.access_token);
+      
+      if (responseData.token) {
+        await SecureStore.setItemAsync('app_jwt_token', responseData.token);
+      }
+      
+      if (responseData.user) {
+        await SecureStore.setItemAsync('github_user_data', JSON.stringify(responseData.user));
+      }
+      
+      return {
+        access_token: responseData.access_token,
+        token: responseData.token,
+        user: responseData.user,
+        ...responseData
+      };
+      
+    } catch (error) {
+      console.error('❌ Error completo intercambiando código por token:', error);
+      
+      if (error.name === 'TypeError') {
+        if (error.message.includes('fetch')) {
+          throw new Error('Error de conexión con el servidor. Verifica tu conexión a internet y que el backend esté funcionando.');
+        }
+        if (error.message.includes('Network request failed')) {
+          throw new Error('Error de red: No se pudo conectar al servidor. Verifica que el backend esté ejecutándose.');
+        }
+      }
+      
+      if (error.message.includes('API_BASE_URL')) {
+        throw new Error('Configuración de API incompleta. Verifica que API_BASE_URL esté configurado.');
+      }
+      
+      if (error.name === 'AbortError' || error.message.includes('timeout')) {
+        throw new Error('Timeout: El servidor tardó demasiado en responder. Verifica que el backend esté funcionando.');
+      }
+      
+      throw error;
+    }
+  }
+
+  // ... resto de métodos sin cambios (getUserInfo, revokeToken, etc.)
   static async getUserInfo(accessToken) {
     try {
+      const storedUserData = await SecureStore.getItemAsync('github_user_data');
+      if (storedUserData) {
+        try {
+          const userData = JSON.parse(storedUserData);
+          console.log('Usando datos de usuario guardados del backend');
+          return userData;
+        } catch (parseError) {
+          console.warn('Error parseando datos de usuario guardados:', parseError);
+        }
+      }
+
+      console.log('Obteniendo información del usuario de GitHub API...');
       const userResponse = await fetch(discovery.userInfoEndpoint, {
         headers: {
           'Authorization': `token ${accessToken}`,
           'Accept': 'application/json',
+          'User-Agent': 'YourApp/1.0',
         },
       });
 
       if (!userResponse.ok) {
-        throw new Error('Error obteniendo información del usuario');
+        throw new Error('Error obteniendo información del usuario de GitHub');
       }
 
       const userData = await userResponse.json();
       
-      // También obtener emails
       const emailResponse = await fetch('https://api.github.com/user/emails', {
         headers: {
           'Authorization': `token ${accessToken}`,
           'Accept': 'application/json',
+          'User-Agent': 'YourApp/1.0',
         },
       });
 
@@ -133,42 +212,50 @@ static async exchangeCodeForToken(code) {
         emails = await emailResponse.json();
       }
 
-      return {
+      const fullUserData = {
         ...userData,
         emails: emails,
       };
+
+      await SecureStore.setItemAsync('github_user_data', JSON.stringify(fullUserData));
+
+      return fullUserData;
     } catch (error) {
       console.error('Error obteniendo información del usuario:', error);
       throw error;
     }
   }
 
-  // Revocar token en GitHub (cerrar sesión completa)
   static async revokeToken(accessToken) {
     try {
-      const response = await fetch(`https://api.github.com/applications/${GITHUB_CLIENT_ID}/token`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Basic ${btoa(`${GITHUB_CLIENT_ID}:${GITHUB_CLIENT_SECRET}`)}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          access_token: accessToken
-        })
-      });
-
-      if (response.ok) {
-        console.log('Token revocado exitosamente en GitHub');
-      } else {
-        console.log('No se pudo revocar el token en GitHub:', response.status);
+      console.log('Revocando token...');
+      
+      if (API_BASE_URL) {
+        try {
+          await fetch(`${API_BASE_URL}/api/github/revoke`, {
+            method: 'POST',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${await this.getStoredAppToken()}`,
+            },
+            body: JSON.stringify({
+              access_token: accessToken
+            })
+          });
+          console.log('Token revocado a través del backend');
+        } catch (error) {
+          console.warn('No se pudo revocar el token a través del backend:', error);
+        }
       }
+      
+      console.log('Limpiando tokens locales');
+      
     } catch (error) {
       console.error('Error revocando token:', error);
     }
   }
 
-  // Obtener token guardado
   static async getStoredToken() {
     try {
       return await SecureStore.getItemAsync('github_access_token');
@@ -178,16 +265,25 @@ static async exchangeCodeForToken(code) {
     }
   }
 
-  // Limpiar token guardado
-  static async clearStoredToken() {
+  static async getStoredAppToken() {
     try {
-      await SecureStore.deleteItemAsync('github_access_token');
+      return await SecureStore.getItemAsync('app_jwt_token');
     } catch (error) {
-      console.error('Error limpiando token:', error);
+      console.error('Error obteniendo JWT token de la app:', error);
+      return null;
     }
   }
 
-  // Verificar si el token es válido
+  static async clearStoredToken() {
+    try {
+      await SecureStore.deleteItemAsync('github_access_token');
+      await SecureStore.deleteItemAsync('app_jwt_token');
+      await SecureStore.deleteItemAsync('github_user_data');
+    } catch (error) {
+      console.error('Error limpiando tokens:', error);
+    }
+  }
+
   static async validateToken(token) {
     try {
       const response = await fetch('https://api.github.com/user', {
@@ -204,19 +300,82 @@ static async exchangeCodeForToken(code) {
     }
   }
 
-  // Logout completo (limpiar todo)
+  static async checkBackendStatus() {
+    try {
+      console.log('🔍 Verificando estado del backend...');
+      
+      if (!API_BASE_URL) {
+        throw new Error('API_BASE_URL no está configurado');
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      const response = await fetch(`${API_BASE_URL}/api/github/status`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Backend status check failed: ${response.status} - ${response.statusText}`);
+      }
+
+      const status = await response.json();
+      console.log('✅ Backend GitHub status:', status);
+      
+      return status;
+    } catch (error) {
+      console.error('❌ Error checking backend status:', error);
+      
+      if (error.name === 'AbortError') {
+        console.error('Backend status check timeout');
+      }
+      
+      throw error;
+    }
+  }
+
+  static async testBackendConnectivity() {
+    try {
+      console.log('🌐 Probando conectividad básica del backend...');
+      
+      if (!API_BASE_URL) {
+        console.error('❌ API_BASE_URL no configurado:', API_BASE_URL);
+        return false;
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      const response = await fetch(API_BASE_URL, {
+        method: 'GET',
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      
+      console.log('✅ Conectividad básica OK - Status:', response.status);
+      return true;
+    } catch (error) {
+      console.error('❌ Error de conectividad básica:', error.message);
+      return false;
+    }
+  }
+
   static async completeLogout() {
     try {
       const token = await this.getStoredToken();
       
       if (token) {
-        // Revocar token en GitHub
         await this.revokeToken(token);
-        // Limpiar token local
         await this.clearStoredToken();
       }
       
-      // Limpiar sesión del navegador
       await this.clearBrowserSession();
       
       console.log('Logout completo realizado');
@@ -226,37 +385,51 @@ static async exchangeCodeForToken(code) {
   }
 }
 
-// Hook personalizado para GitHub OAuth
+// ✅ HOOK CORREGIDO - Simplificado y arreglado
 export const useGitHubAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [shouldCheckExistingAuth, setShouldCheckExistingAuth] = useState(false);
+  
+  // ✅ NUEVO: Callback para manejar éxito de autenticación
+  const [onAuthSuccess, setOnAuthSuccess] = useState(null);
+
+  const authConfig = React.useMemo(() => ({
+    clientId: GITHUB_CLIENT_ID,
+    scopes: ['user:email', 'read:user'],
+    redirectUri,
+    additionalParameters: {
+      allow_signup: 'true',
+    },
+    usePKCE: true,
+    codeChallengeMethod: AuthSession.CodeChallengeMethod.S256,
+  }), []);
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: GITHUB_CLIENT_ID,
-      scopes: ['user:email', 'read:user'],
-      redirectUri,
-      // Agregar un state único para cada solicitud
-      state: `auth-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      // Forzar prompt para nuevas autenticaciones
-      additionalParameters: {
-        allow_signup: 'true',
-      },
-    },
+    authConfig,
     discovery
   );
 
-  // Manejar respuesta de autenticación
+  // Logging PKCE info (solo una vez)
+  useEffect(() => {
+    if (request?.codeVerifier && request?.codeChallenge) {
+      console.log('🔍 PKCE REQUEST DEBUG:');
+      console.log('🔍 codeVerifier length:', request?.codeVerifier?.length);
+      console.log('🔍 codeChallenge length:', request?.codeChallenge?.length);
+    }
+  }, [request?.codeVerifier]);
+
+  // ✅ MANEJO SIMPLIFICADO DE RESPUESTA DE AUTH
   useEffect(() => {
     if (response?.type === 'success') {
       handleAuthResponse(response);
     } else if (response?.type === 'error') {
       setIsLoading(false);
-      console.error('Error en OAuth:', response.error);
+      console.error('❌ Error en OAuth:', response.error);
       Alert.alert(
         'Error de Autenticación', 
-        `Error: ${response.error?.description || response.error?.message || 'Error desconocido'}`
+        `Error: ${response.error?.description || response.error?.message || response.error || 'Error desconocido'}`
       );
     } else if (response?.type === 'cancel') {
       setIsLoading(false);
@@ -264,88 +437,150 @@ export const useGitHubAuth = () => {
     }
   }, [response]);
 
-  // Verificar token existente al iniciar
   useEffect(() => {
-    checkExistingAuth();
-  }, []);
+    if (shouldCheckExistingAuth) {
+      checkExistingAuth();
+      setShouldCheckExistingAuth(false);
+    }
+  }, [shouldCheckExistingAuth]);
 
+  // ✅ FUNCIÓN SIMPLIFICADA PARA MANEJAR RESPUESTA
   const handleAuthResponse = async (authResponse) => {
     setIsLoading(true);
     try {
+      console.log('🔍 HANDLING AUTH RESPONSE...');
+      
       const { code } = authResponse.params;
       
       if (!code) {
         throw new Error('No se recibió código de autorización');
       }
       
+      const codeVerifier = request?.codeVerifier;
+      
+      if (!codeVerifier) {
+        throw new Error('❌ No se pudo obtener el code_verifier. Cierra la app completamente y vuelve a intentar.');
+      }
+      
+      console.log('✅ Procesando código de autorización con backend');
+      
       // Intercambiar código por token
-      const tokenData = await GitHubAuthService.exchangeCodeForToken(code);
+      const authData = await GitHubAuthService.exchangeCodeForToken(code, codeVerifier);
       
-      // Obtener información del usuario
-      const userData = await GitHubAuthService.getUserInfo(tokenData.access_token);
+      console.log('✅ Autenticación exitosa, procesando usuario...');
       
+      let userData;
+      if (authData.user) {
+        userData = authData.user;
+      } else {
+        userData = await GitHubAuthService.getUserInfo(authData.access_token);
+      }
+      
+      // ✅ GUARDAR ID DE USUARIO INMEDIATAMENTE
+      if (userData.id_usuario) {
+        await SecureStore.setItemAsync('user_id', userData.id_usuario.toString());
+        console.log('✅ User ID guardado:', userData.id_usuario);
+      }
+      
+      // Actualizar estado
       setUser(userData);
       setIsAuthenticated(true);
       
-      Alert.alert('Éxito', `¡Bienvenido, ${userData.name || userData.login}!`);
+      console.log('✅ Estado actualizado - Usuario autenticado:', userData.login || userData.name);
       
-      return userData;
+      // ✅ EJECUTAR CALLBACK DE ÉXITO INMEDIATAMENTE
+      if (onAuthSuccess && typeof onAuthSuccess === 'function') {
+        console.log('✅ Ejecutando callback de éxito...');
+        onAuthSuccess(userData);
+      }
+      
+      return authData;
     } catch (error) {
-      console.error('Error en autenticación:', error);
+      console.error('❌ Error en autenticación:', error);
       Alert.alert('Error', `Error al procesar la autenticación: ${error.message}`);
+      setUser(null);
+      setIsAuthenticated(false);
     } finally {
       setIsLoading(false);
     }
   };
 
   const checkExistingAuth = async () => {
+    console.log('Verificando autenticación existente...');
     setIsLoading(true);
     try {
-      const token = await GitHubAuthService.getStoredToken();
+      const githubToken = await GitHubAuthService.getStoredToken();
       
-      if (token) {
-        const isValid = await GitHubAuthService.validateToken(token);
+      if (githubToken) {
+        console.log('Tokens encontrados, validando...');
+        
+        const isValid = await GitHubAuthService.validateToken(githubToken);
         
         if (isValid) {
-          const userData = await GitHubAuthService.getUserInfo(token);
-          setUser(userData);
-          setIsAuthenticated(true);
+          console.log('Token de GitHub válido, obteniendo datos del usuario...');
+          const userData = await GitHubAuthService.getUserInfo(githubToken);
+          
+          if (userData && (userData.id || userData.login)) {
+            setUser(userData);
+            setIsAuthenticated(true);
+            console.log('Autenticación existente restaurada para:', userData.login || userData.name);
+          } else {
+            console.log('Datos de usuario inválidos, limpiando tokens');
+            await GitHubAuthService.clearStoredToken();
+          }
         } else {
+          console.log('Token de GitHub inválido, limpiando...');
           await GitHubAuthService.clearStoredToken();
         }
+      } else {
+        console.log('No se encontraron tokens almacenados');
       }
     } catch (error) {
       console.error('Error verificando autenticación existente:', error);
+      await GitHubAuthService.clearStoredToken();
     } finally {
       setIsLoading(false);
     }
   };
 
-  const signInWithGitHub = async () => {
+  // ✅ FUNCIÓN PRINCIPAL CORREGIDA
+  const signInWithGitHub = async (successCallback) => {
     if (!request) {
-      Alert.alert('Error', 'GitHub OAuth no está disponible');
+      Alert.alert('Error', 'GitHub OAuth no está disponible. Reinicia la app.');
       return;
     }
     
+    console.log('🚀 Iniciando autenticación con GitHub CON PKCE...');
+    
+    // ✅ ESTABLECER CALLBACK DE ÉXITO
+    setOnAuthSuccess(() => successCallback);
+    
     setIsLoading(true);
+    
     try {
-      // Limpiar sesión del navegador antes de iniciar nueva autenticación
-      await GitHubAuthService.clearBrowserSession();
+      console.log('Probando conectividad del backend...');
+      const isBackendReachable = await GitHubAuthService.testBackendConnectivity();
       
-      // Esperar un poco para asegurar que la limpieza se complete
+      if (!isBackendReachable) {
+        throw new Error('No se puede conectar al backend. Verifica que el servidor esté ejecutándose.');
+      }
+      
+      // Limpieza antes de nueva auth
+      await GitHubAuthService.clearBrowserSession();
+      await GitHubAuthService.clearStoredToken();
+      
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Iniciar el flujo de autenticación
+      console.log('🔥 Iniciando prompt OAuth...');
       await promptAsync({
-        // Opciones adicionales para forzar nueva sesión
         showInRecents: false,
-        // En iOS, esto fuerza un nuevo contexto del navegador
         preferEphemeralSession: true,
       });
+      
     } catch (error) {
-      console.error('Error iniciando autenticación:', error);
+      console.error('❌ Error iniciando autenticación:', error);
       setIsLoading(false);
-      Alert.alert('Error', 'Error al iniciar autenticación con GitHub');
+      Alert.alert('Error', `Error al iniciar autenticación con GitHub: ${error.message}`);
     }
   };
 
@@ -353,11 +588,11 @@ export const useGitHubAuth = () => {
     try {
       setIsLoading(true);
       
-      // Logout completo
       await GitHubAuthService.completeLogout();
       
       setUser(null);
       setIsAuthenticated(false);
+      setOnAuthSuccess(null); // ✅ Limpiar callback
       Alert.alert('Sesión cerrada', 'Has cerrado sesión exitosamente');
     } catch (error) {
       console.error('Error cerrando sesión:', error);
@@ -367,23 +602,21 @@ export const useGitHubAuth = () => {
     }
   };
 
-  // Función para forzar limpieza y nueva autenticación
-  const forceNewAuth = async () => {
+  const forceNewAuth = async (successCallback) => {
     try {
       setIsLoading(true);
       
-      // Logout completo primero
+      console.log('🔄 Forzando nueva autenticación...');
+      
       await GitHubAuthService.completeLogout();
       
-      // Resetear estado
       setUser(null);
       setIsAuthenticated(false);
+      setOnAuthSuccess(null); // ✅ Limpiar callback anterior
       
-      // Esperar un poco
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Iniciar nueva autenticación
-      await signInWithGitHub();
+      await signInWithGitHub(successCallback); // ✅ Pasar callback
     } catch (error) {
       console.error('Error en nueva autenticación forzada:', error);
       Alert.alert('Error', 'Error al reiniciar autenticación');
@@ -392,18 +625,23 @@ export const useGitHubAuth = () => {
     }
   };
 
+  const checkForExistingAuth = () => {
+    setShouldCheckExistingAuth(true);
+  };
+
   return {
     isLoading,
     user,
     isAuthenticated,
-    signInWithGitHub,
+    signInWithGitHub, // ✅ Ahora acepta callback
     signOut,
-    forceNewAuth,
+    forceNewAuth, // ✅ Ahora acepta callback
+    checkForExistingAuth,
     request,
   };
 };
 
-// Componente de botón para GitHub
+// Componente de botón para GitHub (sin cambios)
 export const GitHubButton = ({ onPress, onForceNewAuth, isLoading = false, colors }) => {
   return (
     <View>
@@ -423,7 +661,6 @@ export const GitHubButton = ({ onPress, onForceNewAuth, isLoading = false, color
         </View>
       </TouchableOpacity>
       
-      {/* Botón adicional para forzar nueva sesión (útil para debugging) */}
       {__DEV__ && onForceNewAuth && (
         <TouchableOpacity
           style={[styles.debugButton, { 
@@ -481,5 +718,4 @@ const styles = StyleSheet.create({
   },
 });
 
-// Exportar el servicio también para uso directo si es necesario
 export default GitHubAuthService;

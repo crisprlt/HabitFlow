@@ -1,5 +1,5 @@
-// LoginScreen.js - Con lógica de autenticación separada
-import React, { useState } from 'react';
+// LoginScreen.js - FIXED NAVIGATION ISSUE
+import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, 
   Text, 
@@ -14,8 +14,9 @@ import {
 import { Infinity, Eye, EyeOff } from 'lucide-react-native';
 import { useTheme } from './ThemeContext';
 import api from '../services/api';
-import { GitHubButton } from '../services/GitHubAuth';
-import { useGitHubLogin } from '../hooks/useGithubLogin';
+import { useGitHubAuth, GitHubButton } from '../services/GitHubAuth';
+import * as SecureStore from 'expo-secure-store';
+
 // Ocultar advertencias y errores de consola en pantalla
 if (__DEV__) {
   LogBox.ignoreAllLogs(true);
@@ -25,13 +26,12 @@ const LoginScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('login');
   const { colors } = useTheme();
   
-  // Estados para Login Regular
+  // Estados para Login
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoginLoading, setIsLoginLoading] = useState(false);
   
-  // Estados para Registro Regular
+  // Estados para Registro
   const [registerName, setRegisterName] = useState('');
   const [registerLastName, setRegisterLastName] = useState('');
   const [registerEmail, setRegisterEmail] = useState('');
@@ -39,14 +39,57 @@ const LoginScreen = ({ navigation }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isRegisterLoading, setIsRegisterLoading] = useState(false);
+  
+  // Estados de carga
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Hook personalizado para GitHub
+  // ✅ HOOK SIMPLIFICADO - Solo obtener las funciones que necesitamos
   const { 
-    isGitHubLoading, 
-    handleGitHubLogin, 
-    handleForceNewGitHubAuth 
-  } = useGitHubLogin(navigation);
+    isLoading: isGitHubLoading, 
+    signInWithGitHub,
+    request: gitHubRequest
+  } = useGitHubAuth();
+
+  // ✅ FUNCIÓN DE MANEJO DE ÉXITO DE GITHUB - Más simple y directa
+  const handleGitHubAuthSuccess = async (userData) => {
+    try {
+      console.log('🎉 GitHub auth exitosa, procesando navegación...');
+      console.log('🎉 Usuario:', userData.login || userData.name);
+      console.log('🎉 ID de usuario en BD:', userData.id_usuario);
+      
+      // ✅ VERIFICAR QUE EL ID DE USUARIO ESTÉ GUARDADO
+      const storedUserId = await SecureStore.getItemAsync('user_id');
+      console.log('✅ User ID en storage:', storedUserId);
+      
+      if (!storedUserId && userData.id_usuario) {
+        await SecureStore.setItemAsync('user_id', userData.id_usuario.toString());
+        console.log('✅ User ID guardado como fallback:', userData.id_usuario);
+      }
+      
+      // ✅ NAVEGACIÓN INMEDIATA Y DIRECTA
+      console.log('✅ Navegando a Principal...');
+      
+      Alert.alert(
+        'Éxito', 
+        `¡Bienvenido ${userData.name || userData.login}!`,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              navigation.navigate('Principal');
+            }
+          }
+        ]
+      );
+      
+    } catch (error) {
+      console.error('❌ Error procesando navegación de GitHub:', error);
+      Alert.alert(
+        'Error', 
+        'Error al completar el inicio de sesión. Intenta nuevamente.'
+      );
+    }
+  };
 
   // Función para validar email
   const isValidEmail = (email) => {
@@ -54,168 +97,220 @@ const LoginScreen = ({ navigation }) => {
     return emailRegex.test(email);
   };
 
-  // LÓGICA DE LOGIN REGULAR
-  const handleRegularLogin = async () => {
-    // Validaciones básicas
-    if (!email || !password) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+ const handleLogin = async () => {
+  // Validaciones básicas
+  if (!email || !password) {
+    Alert.alert('Error', 'Por favor completa todos los campos');
+    return;
+  }
+
+  if (!isValidEmail(email)) {
+    Alert.alert('Error', 'Por favor ingresa un email válido');
+    return;
+  }
+
+  setIsLoading(true);
+
+  try {
+    // Hacer petición al backend
+    const response = await api.post('/api/users/login', {
+      email: email.trim().toLowerCase(),
+      password: password
+    });
+
+    // Si llegamos aquí, el login fue exitoso
+    console.log('Login exitoso:', response.data);
+    
+    // ✅ CORRECCIÓN: Acceder correctamente a la estructura de respuesta
+    // La respuesta tiene: response.data.data.user.id (no response.data.user.id)
+    if (response.data?.data?.user?.id) {
+      const userId = response.data.data.user.id.toString();
+      await SecureStore.setItemAsync('user_id', userId);
+      console.log('✅ User ID guardado para login normal:', userId);
+      
+      // ✅ VERIFICAR QUE SE GUARDÓ CORRECTAMENTE
+      const verificacion = await SecureStore.getItemAsync('user_id');
+      console.log('✅ Verificación - User ID en storage después del login:', verificacion);
+    } else {
+      console.error('❌ Estructura de respuesta inesperada:', response.data);
+      // Fallback: buscar en diferentes ubicaciones posibles
+      const possibleId = response.data?.user?.id || response.data?.data?.user?.id_usuario || response.data?.user?.id_usuario;
+      if (possibleId) {
+        await SecureStore.setItemAsync('user_id', possibleId.toString());
+        console.log('✅ User ID guardado con fallback:', possibleId);
+      }
+    }
+    
+    Alert.alert(
+      'Éxito', 
+      'Inicio de sesión exitoso',
+      [
+        {
+          text: 'OK',
+          onPress: () => {
+            // Limpiar campos
+            setEmail('');
+            setPassword('');
+            // Navegar a la pantalla principal
+            navigation.navigate('Principal');
+          }
+        }
+      ]
+    );
+
+  } catch (error) {
+    console.error('Error en login:', error.response?.data || error.message);
+    
+    // Determinar el mensaje de error
+    let errorMessage = 'Error al iniciar sesión';
+    
+    if (error.response) {
+      // El servidor respondió con un código de error
+      if (error.response.status === 401) {
+        errorMessage = 'Credenciales incorrectas. Verifica tu email y contraseña.';
+      } else if (error.response.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+    } else if (error.request) {
+      // No hay respuesta del servidor
+      errorMessage = 'Error de conexión. Verifica tu internet e intenta nuevamente.';
+    }
+    
+    Alert.alert('Error', errorMessage);
+  } finally {
+    setIsLoading(false);
+  }
+};
+const handleRegister = async () => {
+  // Validaciones básicas
+  if (!registerName || !registerLastName || !registerEmail || !registerPassword || !confirmPassword) {
+    Alert.alert('Error', 'Por favor completa todos los campos');
+    return;
+  }
+
+  if (!isValidEmail(registerEmail)) {
+    Alert.alert('Error', 'Por favor ingresa un email válido');
+    return;
+  }
+
+  if (registerPassword.length < 6) {
+    Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+    return;
+  }
+
+  if (registerPassword !== confirmPassword) {
+    Alert.alert('Error', 'Las contraseñas no coinciden');
+    return;
+  }
+
+  setIsLoading(true);
+
+  try {
+    // Hacer petición al backend
+    const response = await api.post('/api/users/register', {
+      name: registerName.trim(),
+      lastName: registerLastName.trim(),
+      email: registerEmail.trim().toLowerCase(),
+      password: registerPassword
+    });
+
+    // Si llegamos aquí, el registro fue exitoso
+    console.log('Registro exitoso:', response.data);
+    
+    // ✅ CORRECCIÓN: Acceder correctamente a la estructura de respuesta
+    if (response.data?.data?.user?.id) {
+      const userId = response.data.data.user.id.toString();
+      await SecureStore.setItemAsync('user_id', userId);
+      console.log('✅ User ID guardado para registro:', userId);
+      
+      // ✅ VERIFICAR QUE SE GUARDÓ CORRECTAMENTE
+      const verificacion = await SecureStore.getItemAsync('user_id');
+      console.log('✅ Verificación - User ID en storage después del registro:', verificacion);
+    } else {
+      console.error('❌ Estructura de respuesta inesperada en registro:', response.data);
+      // Fallback similar al login
+      const possibleId = response.data?.user?.id || response.data?.data?.user?.id_usuario || response.data?.user?.id_usuario;
+      if (possibleId) {
+        await SecureStore.setItemAsync('user_id', possibleId.toString());
+        console.log('✅ User ID guardado con fallback en registro:', possibleId);
+      }
+    }
+    
+    Alert.alert(
+      'Éxito', 
+      'Usuario registrado exitosamente',
+      [
+        {
+          text: 'OK',
+          onPress: () => {
+            // Limpiar campos
+            setRegisterName('');
+            setRegisterLastName('');
+            setRegisterEmail('');
+            setRegisterPassword('');
+            setConfirmPassword('');
+            // Navegar a la pantalla principal
+            navigation.navigate('Principal');
+          }
+        }
+      ]
+    );
+
+  } catch (error) {
+    console.error('Error en registro:', error.response?.data || error.message);
+    
+    // Determinar el mensaje de error
+    let errorMessage = 'Error al registrar usuario';
+    
+    if (error.response) {
+      // El servidor respondió con un código de error
+      if (error.response.status === 400) {
+        errorMessage = error.response.data?.message || 'Datos inválidos. Verifica la información ingresada.';
+      } else if (error.response.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+    } else if (error.request) {
+      // No hay respuesta del servidor
+      errorMessage = 'Error de conexión. Verifica tu internet e intenta nuevamente.';
+    }
+    
+    Alert.alert('Error', errorMessage);
+  } finally {
+    setIsLoading(false);
+  }
+};
+  // ✅ FUNCIÓN SIMPLIFICADA PARA GITHUB LOGIN
+  const handleGitHubLogin = async () => {
+    if (!gitHubRequest) {
+      Alert.alert('Error', 'GitHub OAuth no está configurado correctamente. Verifica la configuración en GitHubAuth.js');
       return;
     }
-
-    if (!isValidEmail(email)) {
-      Alert.alert('Error', 'Por favor ingresa un email válido');
-      return;
-    }
-
-    setIsLoginLoading(true);
 
     try {
-      const response = await api.post('/api/users/login', {
-        email: email.trim().toLowerCase(),
-        password: password
-      });
-
-      console.log('Login regular exitoso:', response.data);
+      console.log('🚀 Iniciando autenticación con GitHub...');
       
-      Alert.alert(
-        'Éxito', 
-        'Inicio de sesión exitoso',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              clearLoginFields();
-              navigation.navigate('Principal');
-            }
-          }
-        ]
-      );
-
+      // ✅ PASAR CALLBACK DE ÉXITO DIRECTAMENTE
+      await signInWithGitHub(handleGitHubAuthSuccess);
+      
     } catch (error) {
-      console.error('Error en login regular:', error.response?.data || error.message);
-      
-      let errorMessage = 'Error al iniciar sesión';
-      
-      if (error.response) {
-        if (error.response.status === 401) {
-          errorMessage = 'Credenciales incorrectas. Verifica tu email y contraseña.';
-        } else if (error.response.data?.message) {
-          errorMessage = error.response.data.message;
-        }
-      } else if (error.request) {
-        errorMessage = 'Error de conexión. Verifica tu internet e intenta nuevamente.';
-      }
-      
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setIsLoginLoading(false);
-    }
-  };
-
-  // LÓGICA DE REGISTRO REGULAR
-  const handleRegularRegister = async () => {
-    // Validaciones básicas
-    if (!registerName || !registerLastName || !registerEmail || !registerPassword || !confirmPassword) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
-      return;
-    }
-
-    if (!isValidEmail(registerEmail)) {
-      Alert.alert('Error', 'Por favor ingresa un email válido');
-      return;
-    }
-
-    if (registerPassword.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
-      return;
-    }
-
-    if (registerPassword !== confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas no coinciden');
-      return;
-    }
-
-    setIsRegisterLoading(true);
-
-    try {
-      const response = await api.post('/api/users/register', {
-        name: registerName.trim(),
-        lastName: registerLastName.trim(),
-        email: registerEmail.trim().toLowerCase(),
-        password: registerPassword
-      });
-
-      console.log('Registro regular exitoso:', response.data);
-      
+      console.error('Error iniciando sesión con GitHub:', error);
       Alert.alert(
-        'Éxito', 
-        'Usuario registrado exitosamente',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              clearRegisterFields();
-              navigation.navigate('Principal');
-            }
-          }
-        ]
+        'Error de GitHub', 
+        'Error al iniciar sesión con GitHub. Verifica tu conexión e intenta nuevamente.'
       );
-
-    } catch (error) {
-      console.error('Error en registro regular:', error.response?.data || error.message);
-      
-      let errorMessage = 'Error al registrar usuario';
-      
-      if (error.response) {
-        if (error.response.status === 400) {
-          errorMessage = error.response.data?.message || 'Datos inválidos. Verifica la información ingresada.';
-        } else if (error.response.data?.message) {
-          errorMessage = error.response.data.message;
-        }
-      } else if (error.request) {
-        errorMessage = 'Error de conexión. Verifica tu internet e intenta nuevamente.';
-      }
-      
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setIsRegisterLoading(false);
     }
-  };
-
-  // FUNCIONES AUXILIARES
-  const clearLoginFields = () => {
-    setEmail('');
-    setPassword('');
-    setShowPassword(false);
-  };
-
-  const clearRegisterFields = () => {
-    setRegisterName('');
-    setRegisterLastName('');
-    setRegisterEmail('');
-    setRegisterPassword('');
-    setConfirmPassword('');
-    setShowRegisterPassword(false);
-    setShowConfirmPassword(false);
   };
 
   const togglePasswordVisibility = (field) => {
-    switch (field) {
-      case 'login':
-        setShowPassword(!showPassword);
-        break;
-      case 'register':
-        setShowRegisterPassword(!showRegisterPassword);
-        break;
-      case 'confirm':
-        setShowConfirmPassword(!showConfirmPassword);
-        break;
+    if (field === 'login') {
+      setShowPassword(!showPassword);
+    } else if (field === 'register') {
+      setShowRegisterPassword(!showRegisterPassword);
+    } else if (field === 'confirm') {
+      setShowConfirmPassword(!showConfirmPassword);
     }
   };
 
-  const isAnyLoading = isLoginLoading || isRegisterLoading || isGitHubLoading;
-
-  // RENDER LOGIN FORM
   const renderLoginForm = () => (
     <View style={styles.formContainer}>
       <View style={styles.inputContainer}>
@@ -232,7 +327,7 @@ const LoginScreen = ({ navigation }) => {
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
-          editable={!isAnyLoading}
+          editable={!isLoading && !isGitHubLoading}
         />
       </View>
 
@@ -248,12 +343,12 @@ const LoginScreen = ({ navigation }) => {
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
-            editable={!isAnyLoading}
+            editable={!isLoading && !isGitHubLoading}
           />
           <TouchableOpacity 
             style={styles.eyeButton}
             onPress={() => togglePasswordVisibility('login')}
-            disabled={isAnyLoading}
+            disabled={isLoading || isGitHubLoading}
           >
             {showPassword ? (
               <EyeOff size={20} color={colors.textSecondary} />
@@ -267,12 +362,12 @@ const LoginScreen = ({ navigation }) => {
       <TouchableOpacity 
         style={[
           styles.loginButton, 
-          { backgroundColor: isAnyLoading ? colors.textSecondary : colors.primary }
+          { backgroundColor: (isLoading || isGitHubLoading) ? colors.textSecondary : colors.primary }
         ]} 
-        onPress={handleRegularLogin}
-        disabled={isAnyLoading}
+        onPress={handleLogin}
+        disabled={isLoading || isGitHubLoading}
       >
-        {isLoginLoading ? (
+        {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator color="#FFFFFF" size="small" />
             <Text style={[styles.loginButtonText, { marginLeft: 8 }]}>
@@ -294,16 +389,14 @@ const LoginScreen = ({ navigation }) => {
       {/* Botón de GitHub */}
       <GitHubButton 
         onPress={handleGitHubLogin}
-        onForceNewAuth={handleForceNewGitHubAuth}
         isLoading={isGitHubLoading}
-        disabled={isAnyLoading}
         colors={colors}
       />
 
       <TouchableOpacity 
         style={styles.forgotPassword}  
         onPress={() => navigation.navigate('ForgotPassword')}
-        disabled={isAnyLoading}
+        disabled={isLoading || isGitHubLoading}
       >
         <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>
           ¿Olvidaste tu contraseña?
@@ -312,7 +405,6 @@ const LoginScreen = ({ navigation }) => {
     </View>
   );
 
-  // RENDER REGISTER FORM
   const renderRegisterForm = () => (
     <View style={styles.formContainer}>
       <View style={styles.inputContainer}>
@@ -327,7 +419,7 @@ const LoginScreen = ({ navigation }) => {
           value={registerName}
           onChangeText={setRegisterName}
           autoCapitalize="words"
-          editable={!isAnyLoading}
+          editable={!isLoading && !isGitHubLoading}
         />
       </View>
 
@@ -343,7 +435,7 @@ const LoginScreen = ({ navigation }) => {
           value={registerLastName}
           onChangeText={setRegisterLastName}
           autoCapitalize="words"
-          editable={!isAnyLoading}
+          editable={!isLoading && !isGitHubLoading}
         />
       </View>
 
@@ -361,7 +453,7 @@ const LoginScreen = ({ navigation }) => {
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
-          editable={!isAnyLoading}
+          editable={!isLoading && !isGitHubLoading}
         />
       </View>
 
@@ -377,12 +469,12 @@ const LoginScreen = ({ navigation }) => {
             value={registerPassword}
             onChangeText={setRegisterPassword}
             secureTextEntry={!showRegisterPassword}
-            editable={!isAnyLoading}
+            editable={!isLoading && !isGitHubLoading}
           />
           <TouchableOpacity 
             style={styles.eyeButton}
             onPress={() => togglePasswordVisibility('register')}
-            disabled={isAnyLoading}
+            disabled={isLoading || isGitHubLoading}
           >
             {showRegisterPassword ? (
               <EyeOff size={20} color={colors.textSecondary} />
@@ -405,12 +497,12 @@ const LoginScreen = ({ navigation }) => {
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry={!showConfirmPassword}
-            editable={!isAnyLoading}
+            editable={!isLoading && !isGitHubLoading}
           />
           <TouchableOpacity 
             style={styles.eyeButton}
             onPress={() => togglePasswordVisibility('confirm')}
-            disabled={isAnyLoading}
+            disabled={isLoading || isGitHubLoading}
           >
             {showConfirmPassword ? (
               <EyeOff size={20} color={colors.textSecondary} />
@@ -424,12 +516,12 @@ const LoginScreen = ({ navigation }) => {
       <TouchableOpacity 
         style={[
           styles.loginButton, 
-          { backgroundColor: isAnyLoading ? colors.textSecondary : colors.primary }
+          { backgroundColor: (isLoading || isGitHubLoading) ? colors.textSecondary : colors.primary }
         ]} 
-        onPress={handleRegularRegister}
-        disabled={isAnyLoading}
+        onPress={handleRegister}
+        disabled={isLoading || isGitHubLoading}
       >
-        {isRegisterLoading ? (
+        {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator color="#FFFFFF" size="small" />
             <Text style={[styles.loginButtonText, { marginLeft: 8 }]}>
@@ -451,9 +543,7 @@ const LoginScreen = ({ navigation }) => {
       {/* Botón de GitHub */}
       <GitHubButton 
         onPress={handleGitHubLogin}
-        onForceNewAuth={handleForceNewGitHubAuth}
         isLoading={isGitHubLoading}
-        disabled={isAnyLoading}
         colors={colors}
       />
     </View>
@@ -481,7 +571,7 @@ const LoginScreen = ({ navigation }) => {
               activeTab === 'login' && { ...styles.activeTab, backgroundColor: colors.surface }
             ]}
             onPress={() => setActiveTab('login')}
-            disabled={isAnyLoading}
+            disabled={isLoading || isGitHubLoading}
           >
             <Text style={[
               styles.tabText, 
@@ -498,7 +588,7 @@ const LoginScreen = ({ navigation }) => {
               activeTab === 'register' && { ...styles.activeTab, backgroundColor: colors.surface }
             ]}
             onPress={() => setActiveTab('register')}
-            disabled={isAnyLoading}
+            disabled={isLoading || isGitHubLoading}
           >
             <Text style={[
               styles.tabText, 

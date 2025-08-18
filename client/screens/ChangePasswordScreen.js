@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,7 +9,8 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  ScrollView
+  ScrollView,
+  ActivityIndicator
 } from 'react-native';
 import { 
   ArrowLeft, 
@@ -20,13 +21,16 @@ import {
   Shield,
   AlertCircle
 } from 'lucide-react-native';
-import { useTheme } from './ThemeContext'; // ✅ Importar el hook del contexto
+import { useTheme } from './ThemeContext';
+import api from '../services/api';
+import * as SecureStore from 'expo-secure-store';
 
 const SCALE = 1.0;
 
 const ChangePasswordScreen = ({ navigation }) => {
-  const { colors } = useTheme(); // ✅ Usar el contexto de tema
+  const { colors } = useTheme();
   
+  const [userId, setUserId] = useState(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -36,6 +40,37 @@ const ChangePasswordScreen = ({ navigation }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const [isLoading, setIsLoading] = useState(false);
+
+  // Obtener userId del SecureStore al montar el componente
+  useEffect(() => {
+    const getUserId = async () => {
+      try {
+        const storedUserId = await SecureStore.getItemAsync('user_id');
+        console.log('✅ ChangePasswordScreen - User ID obtenido del storage:', storedUserId);
+        
+        if (storedUserId) {
+          setUserId(storedUserId);
+        } else {
+          console.log('❌ No se encontró user_id en SecureStore');
+          Alert.alert(
+            'Sesión expirada',
+            'Por favor, inicia sesión nuevamente',
+            [
+              {
+                text: 'OK',
+                onPress: () => navigation.navigate('Login')
+              }
+            ]
+          );
+        }
+      } catch (error) {
+        console.error('❌ Error obteniendo userId del storage:', error);
+        Alert.alert('Error', 'Error al obtener información de usuario');
+      }
+    };
+
+    getUserId();
+  }, []);
 
   // Validaciones de contraseña
   const validatePassword = (password) => {
@@ -82,7 +117,13 @@ const ChangePasswordScreen = ({ navigation }) => {
   };
 
   const handleChangePassword = async () => {
-    // Validaciones
+    // Validar que tenemos el userId
+    if (!userId) {
+      Alert.alert('Error', 'No se pudo obtener la información del usuario');
+      return;
+    }
+
+    // Validaciones básicas
     if (!currentPassword.trim()) {
       Alert.alert('Error', 'Por favor ingresa tu contraseña actual');
       return;
@@ -127,34 +168,47 @@ const ChangePasswordScreen = ({ navigation }) => {
     setIsLoading(true);
     
     try {
-      // Simular llamada a API
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Aquí harías la llamada real a tu API
-      console.log('Changing password...', {
-        currentPassword,
-        newPassword
+      console.log('🔄 Cambiando contraseña para usuario ID:', userId);
+
+      const response = await api.put('/api/users/change-password', {
+        userId: parseInt(userId),
+        currentPassword: currentPassword.trim(),
+        newPassword: newPassword.trim()
       });
 
-      Alert.alert(
-        '¡Éxito!',
-        'Tu contraseña ha sido cambiada correctamente',
-        [
-          { 
-            text: 'OK', 
-            onPress: () => {
-              // Limpiar campos
-              setCurrentPassword('');
-              setNewPassword('');
-              setConfirmPassword('');
-              navigation.goBack();
+      console.log('✅ Respuesta del servidor:', response.data);
+
+      if (response.data.success) {
+        Alert.alert(
+          '¡Éxito!',
+          'Tu contraseña ha sido cambiada correctamente',
+          [
+            { 
+              text: 'OK', 
+              onPress: () => {
+                // Limpiar campos
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+                navigation.goBack();
+              }
             }
-          }
-        ]
-      );
+          ]
+        );
+      }
 
     } catch (error) {
-      Alert.alert('Error', 'No se pudo cambiar la contraseña. Inténtalo de nuevo.');
+      console.error('❌ Error cambiando contraseña:', error);
+      
+      if (error.response?.data?.message) {
+        Alert.alert('Error', error.response.data.message);
+      } else if (error.response?.status === 400) {
+        Alert.alert('Error', 'Contraseña actual incorrecta');
+      } else if (error.response?.status === 404) {
+        Alert.alert('Error', 'Usuario no encontrado');
+      } else {
+        Alert.alert('Error', 'No se pudo cambiar la contraseña. Inténtalo de nuevo.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -213,10 +267,12 @@ const ChangePasswordScreen = ({ navigation }) => {
                 secureTextEntry={!showCurrentPassword}
                 autoCapitalize="none"
                 autoCorrect={false}
+                editable={!isLoading}
               />
               <TouchableOpacity 
                 style={styles.eyeButton}
                 onPress={() => togglePasswordVisibility('current')}
+                disabled={isLoading}
               >
                 {showCurrentPassword ? (
                   <EyeOff size={20} color={colors.textSecondary} />
@@ -245,10 +301,12 @@ const ChangePasswordScreen = ({ navigation }) => {
                 secureTextEntry={!showNewPassword}
                 autoCapitalize="none"
                 autoCorrect={false}
+                editable={!isLoading}
               />
               <TouchableOpacity 
                 style={styles.eyeButton}
                 onPress={() => togglePasswordVisibility('new')}
+                disabled={isLoading}
               >
                 {showNewPassword ? (
                   <EyeOff size={20} color={colors.textSecondary} />
@@ -381,10 +439,12 @@ const ChangePasswordScreen = ({ navigation }) => {
                 secureTextEntry={!showConfirmPassword}
                 autoCapitalize="none"
                 autoCorrect={false}
+                editable={!isLoading}
               />
               <TouchableOpacity 
                 style={styles.eyeButton}
                 onPress={() => togglePasswordVisibility('confirm')}
+                disabled={isLoading}
               >
                 {showConfirmPassword ? (
                   <EyeOff size={20} color={colors.textSecondary} />
@@ -449,7 +509,7 @@ const ChangePasswordScreen = ({ navigation }) => {
                 shadowColor: colors.primary 
               },
               (!currentPassword || !newPassword || !confirmPassword || 
-               newPassword !== confirmPassword || isLoading) && { 
+               newPassword !== confirmPassword || isLoading || !userId) && { 
                 backgroundColor: colors.textTertiary,
                 shadowOpacity: 0,
                 elevation: 0 
@@ -457,10 +517,13 @@ const ChangePasswordScreen = ({ navigation }) => {
             ]}
             onPress={handleChangePassword}
             disabled={!currentPassword || !newPassword || !confirmPassword || 
-                     newPassword !== confirmPassword || isLoading}
+                     newPassword !== confirmPassword || isLoading || !userId}
           >
             {isLoading ? (
-              <Text style={styles.changeButtonText}>Cambiando...</Text>
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator color="#fff" size="small" />
+                <Text style={styles.changeButtonText}>Cambiando...</Text>
+              </View>
             ) : (
               <>
                 <Lock size={18 * SCALE} color="#fff" />
@@ -634,6 +697,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
     elevation: 4,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   changeButtonText: {
     color: '#FFFFFF',

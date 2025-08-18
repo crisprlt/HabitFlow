@@ -9,6 +9,7 @@ import {
   Modal,
   TextInput,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import {
   ArrowLeft,
@@ -31,30 +32,121 @@ import {
   Smartphone,
   X
 } from 'lucide-react-native';
-import { useTheme } from './ThemeContext'; // Importar el hook
+import { useTheme } from './ThemeContext';
+import api from '../services/api';
+import * as SecureStore from 'expo-secure-store';
 
 const SCALE = 1.2;
 const { width } = Dimensions.get('window');
 
 const PerfilScreen = ({ navigation }) => {
-  const { themeMode, colors, setTheme } = useTheme(); // Usar el contexto
+  const { themeMode, colors, setTheme } = useTheme();
   const [showThemeModal, setShowThemeModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   
+  const [userId, setUserId] = useState(null);
   const [userData, setUserData] = useState({
-    nombre: 'Juan',
-    apellido: 'Pérez',
-    email: 'juan.perez@email.com',
-    fechaRegistro: '15 de Enero, 2024',
+    id_usuario: null,
+    nombre: '',
+    apellido: '',
+    correo: '',
+    fechaRegistro: '',
     habitosCompletados: 127,
     racha: 15
   });
 
   const [editData, setEditData] = useState({
-    nombre: userData.nombre,
-    apellido: userData.apellido,
-    email: userData.email
+    nombre: '',
+    apellido: '',
+    email: ''
   });
+
+  // Cargar userId del SecureStore y luego los datos del usuario
+  useEffect(() => {
+    const getUserId = async () => {
+      try {
+        const storedUserId = await SecureStore.getItemAsync('user_id');
+        console.log('✅ PerfilScreen - User ID obtenido del storage:', storedUserId);
+        
+        if (storedUserId) {
+          setUserId(storedUserId);
+        } else {
+          console.log('❌ No se encontró user_id en SecureStore');
+          Alert.alert(
+            'Sesión expirada',
+            'Por favor, inicia sesión nuevamente',
+            [
+              {
+                text: 'OK',
+                onPress: () => navigation.navigate('Login')
+              }
+            ]
+          );
+        }
+      } catch (error) {
+        console.error('❌ Error obteniendo userId del storage:', error);
+        Alert.alert('Error', 'Error al obtener información de usuario');
+      }
+    };
+
+    getUserId();
+  }, []);
+
+  // Cargar datos del usuario cuando se obtenga el userId
+  useEffect(() => {
+    if (userId) {
+      loadUserData();
+    }
+  }, [userId]);
+
+  // Función para cargar datos del usuario
+  const loadUserData = async () => {
+    try {
+      setLoading(true);
+      
+      if (!userId) {
+        console.log('❌ No hay userId disponible');
+        return;
+      }
+
+      console.log('🔄 Cargando datos del usuario con ID:', userId);
+
+      const response = await api.get(`/api/users/profile/${parseInt(userId)}`)
+      console.log('✅ Respuesta del servidor:', response.data);
+
+      if (response.data.success) {
+        const user = response.data.data.user;
+        setUserData({
+          id_usuario: user.id_usuario,
+          nombre: user.nombre,
+          apellido: user.apellido,
+          correo: user.correo,
+          fechaRegistro: new Date().toLocaleDateString('es-ES', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          }),
+          habitosCompletados: userData.habitosCompletados,
+          racha: userData.racha
+        });
+
+        setEditData({
+          nombre: user.nombre,
+          apellido: user.apellido,
+          email: user.correo
+        });
+
+        console.log('✅ Datos del usuario cargados correctamente');
+      }
+    } catch (error) {
+      console.error('❌ Error loading user data:', error);
+      Alert.alert('Error', 'No se pudieron cargar los datos del usuario');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -68,26 +160,88 @@ const PerfilScreen = ({ navigation }) => {
         {
           text: 'Cerrar Sesión',
           style: 'destructive',
-          onPress: () => {
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Login' }]
-            });
+          onPress: async () => {
+            try {
+              // Limpiar datos almacenados en SecureStore
+              await SecureStore.deleteItemAsync('user_id');
+              await SecureStore.deleteItemAsync('user_email');
+              await SecureStore.deleteItemAsync('user_name');
+              
+              console.log('✅ Datos de usuario eliminados del SecureStore');
+              
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }]
+              });
+            } catch (error) {
+              console.error('❌ Error during logout:', error);
+            }
           }
         }
       ]
     );
   };
 
-  const handleSaveProfile = () => {
-    setUserData(prev => ({
-      ...prev,
-      nombre: editData.nombre,
-      apellido: editData.apellido,
-      email: editData.email
-    }));
+  const handleSaveProfile = async () => {
+    try {
+      setSaving(true);
+
+      // Validaciones
+      if (!editData.nombre.trim() || !editData.apellido.trim() || !editData.email.trim()) {
+        Alert.alert('Error', 'Todos los campos son obligatorios');
+        return;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(editData.email)) {
+        Alert.alert('Error', 'Por favor ingresa un email válido');
+        return;
+      }
+
+      const response = await api.put('/api/users/change-profile', {
+        userId: parseInt(userId),
+        name: editData.nombre.trim(),
+        lastName: editData.apellido.trim(),
+        email: editData.email.trim()
+      });
+
+      if (response.data.success) {
+        const updatedUser = response.data.data.user;
+        
+        setUserData(prev => ({
+          ...prev,
+          nombre: updatedUser.nombre,
+          apellido: updatedUser.apellido,
+          correo: updatedUser.correo
+        }));
+
+        // Actualizar SecureStore
+        await SecureStore.setItemAsync('user_email', updatedUser.correo);
+        await SecureStore.setItemAsync('user_name', `${updatedUser.nombre} ${updatedUser.apellido}`);
+
+        setShowEditModal(false);
+        Alert.alert('Éxito', 'Perfil actualizado correctamente');
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      
+      if (error.response?.data?.message) {
+        Alert.alert('Error', error.response.data.message);
+      } else {
+        Alert.alert('Error', 'No se pudo actualizar el perfil. Intenta nuevamente.');
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditData({
+      nombre: userData.nombre,
+      apellido: userData.apellido,
+      email: userData.correo
+    });
     setShowEditModal(false);
-    Alert.alert('Éxito', 'Perfil actualizado correctamente');
   };
 
   const saveThemePreference = async (theme) => {
@@ -169,6 +323,15 @@ const PerfilScreen = ({ navigation }) => {
     </TouchableOpacity>
   );
 
+  if (loading) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.text }]}>Cargando perfil...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
@@ -208,8 +371,12 @@ const PerfilScreen = ({ navigation }) => {
           </View>
           
           <View style={styles.userInfo}>
-            <Text style={[styles.userName, { color: colors.text }]}>{userData.nombre} {userData.apellido}</Text>
-            <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{userData.email}</Text>
+            <Text style={[styles.userName, { color: colors.text }]}>
+              {userData.nombre} {userData.apellido}
+            </Text>
+            <Text style={[styles.userEmail, { color: colors.textSecondary }]}>
+              {userData.correo}
+            </Text>
           </View>
         </View>
 
@@ -337,7 +504,7 @@ const PerfilScreen = ({ navigation }) => {
           <View style={[styles.modalContent, { backgroundColor: colors.modalBackground }]}>
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>Editar Perfil</Text>
-              <TouchableOpacity onPress={() => setShowEditModal(false)}>
+              <TouchableOpacity onPress={handleCancelEdit}>
                 <Text style={[styles.cancelText, { color: colors.primary }]}>Cancelar</Text>
               </TouchableOpacity>
             </View>
@@ -385,8 +552,22 @@ const PerfilScreen = ({ navigation }) => {
               />
             </View>
 
-            <TouchableOpacity style={[styles.saveButton, { backgroundColor: colors.primary }]} onPress={handleSaveProfile}>
-              <Text style={styles.saveButtonText}>Guardar Cambios</Text>
+            <TouchableOpacity 
+              style={[
+                styles.saveButton, 
+                { 
+                  backgroundColor: colors.primary,
+                  opacity: saving ? 0.7 : 1
+                }
+              ]} 
+              onPress={handleSaveProfile}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.saveButtonText}>Guardar Cambios</Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -395,10 +576,18 @@ const PerfilScreen = ({ navigation }) => {
   );
 };
 
-// Los estilos se mantienen igual, solo removimos las referencias a colors específicos
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
   },
   header: {
     flexDirection: 'row',

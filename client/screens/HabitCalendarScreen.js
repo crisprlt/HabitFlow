@@ -5,7 +5,9 @@ import {
     TouchableOpacity,
     ScrollView,
     StyleSheet,
-    Dimensions
+    Dimensions,
+    ActivityIndicator,
+    Alert
 } from 'react-native';
 import {
     ArrowLeft,
@@ -14,101 +16,193 @@ import {
     Calendar as CalendarIcon,
     CheckCircle,
     Circle,
-    Target
+    Target,
+    TrendingUp
 } from 'lucide-react-native';
-import { useTheme } from './ThemeContext'; // ✅ Importar el hook del contexto
+import { useTheme } from './ThemeContext';
+import api from '../services/api';
+import * as SecureStore from 'expo-secure-store'; // ✅ Agregar import
 
 const SCALE = 1.2;
 const { width } = Dimensions.get('window');
 
 const HabitCalendarScreen = ({ navigation, route }) => {
-    const { colors } = useTheme(); // ✅ Usar el contexto de tema
-    const { habit } = route.params || {};
+    const { colors } = useTheme();
+    const { habit } = route.params || {}; // ✅ Solo obtener habit, no userId
     
-    const [viewMode, setViewMode] = useState('semanal'); // 'semanal' o 'mensual'
+    const [viewMode, setViewMode] = useState('semanal');
     const [currentDate, setCurrentDate] = useState(new Date());
     const [habitData, setHabitData] = useState({});
+    const [userHabits, setUserHabits] = useState([]);
+    const [selectedHabit, setSelectedHabit] = useState(habit || null);
+    const [stats, setStats] = useState(null);
+    const [streak, setStreak] = useState(0);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [userId, setUserId] = useState(null); // ✅ Estado para userId
 
-    // Datos de ejemplo - normalmente vendrían de tu estado global o base de datos
-    const [mockHabits] = useState([
-        {
-            id: 1,
-            name: 'Beber agua',
-            icon: 'Droplets',
-            category: 'Salud',
-            target: 8,
-            frequency: 'Diario',
-            color: '#968ce4'
-        },
-        {
-            id: 2,
-            name: 'Ejercicio',
-            icon: 'Activity',
-            category: 'Fitness',
-            target: 30,
-            frequency: 'Diario',
-            color: '#4ecdc4'
-        },
-        {
-            id: 3,
-            name: 'Leer',
-            icon: 'BookOpen',
-            category: 'Educación',
-            target: 20,
-            frequency: 'Diario',
-            color: '#ff6b6b'
-        }
-    ]);
-
-    const [selectedHabit, setSelectedHabit] = useState(habit || mockHabits[0]);
-
-    // Mock data para progreso de hábitos
+    // ✅ Obtener userId del SecureStore al cargar el componente
     useEffect(() => {
-        generateMockData();
-    }, [currentDate, selectedHabit]);
+        const getUserId = async () => {
+            try {
+                const storedUserId = await SecureStore.getItemAsync('user_id');
+                console.log('✅ User ID obtenido del storage:', storedUserId);
+                
+                if (storedUserId) {
+                    setUserId(storedUserId);
+                } else {
+                    console.log('❌ No se encontró user_id en SecureStore');
+                    setError('No se encontró sesión de usuario');
+                    setLoading(false);
+                }
+            } catch (error) {
+                console.error('❌ Error obteniendo userId del storage:', error);
+                setError('Error al obtener información de usuario');
+                setLoading(false);
+            }
+        };
 
-    const generateMockData = () => {
-        const data = {};
-        const today = new Date();
-        const startDate = new Date(currentDate);
-        
-        if (viewMode === 'semanal') {
-            startDate.setDate(startDate.getDate() - startDate.getDay());
-            for (let i = 0; i < 7; i++) {
-                const date = new Date(startDate);
-                date.setDate(date.getDate() + i);
-                const dateKey = date.toISOString().split('T')[0];
-                
-                // Solo generar datos para fechas pasadas y hoy
-                if (date <= today) {
-                    data[dateKey] = {
-                        completed: Math.random() > 0.3,
-                        value: Math.floor(Math.random() * (selectedHabit.target + 2)),
-                        target: selectedHabit.target
-                    };
-                }
-            }
+        getUserId();
+    }, []);
+
+    // Cargar hábitos del usuario cuando se obtenga el userId
+    useEffect(() => {
+        console.log('useEffect inicial - userId:', userId);
+        if (userId) {
+            loadUserHabits();
         } else {
-            // Mensual
-            const year = startDate.getFullYear();
-            const month = startDate.getMonth();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            
-            for (let i = 1; i <= daysInMonth; i++) {
-                const date = new Date(year, month, i);
-                const dateKey = date.toISOString().split('T')[0];
-                
-                if (date <= today) {
-                    data[dateKey] = {
-                        completed: Math.random() > 0.3,
-                        value: Math.floor(Math.random() * (selectedHabit.target + 2)),
-                        target: selectedHabit.target
-                    };
-                }
-            }
+            console.log('No hay userId disponible');
         }
-        
-        setHabitData(data);
+    }, [userId]);
+
+    // Cargar datos cuando cambie el hábito seleccionado, fecha o modo de vista
+    useEffect(() => {
+        if (selectedHabit) {
+            loadHabitData();
+        }
+    }, [selectedHabit, currentDate, viewMode]);
+
+    const loadUserHabits = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            console.log('Cargando hábitos para userId:', userId);
+            
+            const response = await api.get(`/api/calendar/habits/user/${userId}`);
+            console.log('Respuesta de hábitos:', response.data);
+            
+            if (response.data.success) {
+                // Normalizar los datos
+                const normalizedHabits = response.data.data.map(habit => ({
+                    ...habit,
+                    target: parseInt(habit.target) || 1 // Convertir target a número
+                }));
+                
+                console.log('Hábitos normalizados:', normalizedHabits);
+                setUserHabits(normalizedHabits);
+                
+                // Si no hay hábito seleccionado, seleccionar el primero
+                if (!selectedHabit && normalizedHabits.length > 0) {
+                    console.log('Seleccionando primer hábito:', normalizedHabits[0]);
+                    setSelectedHabit(normalizedHabits[0]);
+                }
+            } else {
+                console.log('Error en respuesta:', response.data);
+                setError('Error al cargar hábitos');
+            }
+        } catch (err) {
+            console.error('Error cargando hábitos:', err);
+            setError('Error de conexión al cargar hábitos');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const loadHabitData = async () => {
+        if (!selectedHabit) {
+            console.log('No hay hábito seleccionado');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            console.log('Cargando datos para hábito:', selectedHabit.id_habito);
+            const { startDate, endDate } = getDateRange();
+            console.log('Rango de fechas:', { startDate, endDate });
+
+            // Cargar datos del calendario
+            const calendarResponse = await api.get(
+                `/api/calendar/habits/calendar/${selectedHabit.id_habito}`,
+                {
+                    params: {
+                        startDate: startDate,
+                        endDate: endDate
+                    }
+                }
+            );
+
+            console.log('Respuesta calendario:', calendarResponse.data);
+            if (calendarResponse.data.success) {
+                setHabitData(calendarResponse.data.data);
+            }
+
+            // Cargar estadísticas
+            const statsResponse = await api.get(
+                `/api/calendar/habits/stats/${selectedHabit.id_habito}`,
+                {
+                    params: {
+                        startDate: startDate,
+                        endDate: endDate
+                    }
+                }
+            );
+
+            console.log('Respuesta stats:', statsResponse.data);
+            if (statsResponse.data.success) {
+                setStats(statsResponse.data.data);
+            }
+
+            // Cargar racha
+            const streakResponse = await api.get(
+                `/api/calendar/habits/streak/${selectedHabit.id_habito}`
+            );
+
+            console.log('Respuesta racha:', streakResponse.data);
+            if (streakResponse.data.success) {
+                setStreak(streakResponse.data.data.rachaActual);
+            }
+
+        } catch (err) {
+            console.error('Error cargando datos del hábito:', err);
+            setError('Error al cargar datos del hábito');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const getDateRange = () => {
+        if (viewMode === 'semanal') {
+            const startOfWeek = new Date(currentDate);
+            startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+            
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(endOfWeek.getDate() + 6);
+            
+            return {
+                startDate: startOfWeek.toISOString().split('T')[0],
+                endDate: endOfWeek.toISOString().split('T')[0]
+            };
+        } else {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const startOfMonth = new Date(year, month, 1);
+            const endOfMonth = new Date(year, month + 1, 0);
+            
+            return {
+                startDate: startOfMonth.toISOString().split('T')[0],
+                endDate: endOfMonth.toISOString().split('T')[0]
+            };
+        }
     };
 
     const getDaysInWeek = () => {
@@ -188,6 +282,42 @@ const HabitCalendarScreen = ({ navigation, route }) => {
         }
     };
 
+    const handleHabitChange = (habit) => {
+        setSelectedHabit(habit);
+        setHabitData({});
+        setStats(null);
+        setStreak(0);
+    };
+
+    const recordProgress = async (date, value, completed, nota = '') => {
+        if (!selectedHabit) return;
+
+        try {
+            const progressData = {
+                fecha: date,
+                valor: value,
+                completado: completed,
+                nota: nota
+            };
+
+            const response = await api.post(
+                `/api/calendar/habits/progress/${selectedHabit.id_habito}`,
+                progressData
+            );
+
+            if (response.data.success) {
+                // Recargar datos después de registrar progreso
+                loadHabitData();
+                Alert.alert('Éxito', 'Progreso registrado correctamente');
+            } else {
+                Alert.alert('Error', 'No se pudo registrar el progreso');
+            }
+        } catch (error) {
+            console.error('Error registrando progreso:', error);
+            Alert.alert('Error', 'Error de conexión al registrar progreso');
+        }
+    };
+
     const renderWeeklyCalendar = () => {
         const days = getDaysInWeek();
         const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -208,7 +338,28 @@ const HabitCalendarScreen = ({ navigation, route }) => {
                         const isFuture = day > new Date();
                         
                         return (
-                            <View key={index} style={styles.dayCell}>
+                            <TouchableOpacity
+                                key={index}
+                                style={styles.dayCell}
+                                onPress={() => {
+                                    if (!isFuture) {
+                                        const dateKey = getDateKey(day);
+                                        // Aquí puedes agregar lógica para editar el progreso
+                                        Alert.alert(
+                                            'Editar progreso',
+                                            `¿Deseas modificar el progreso del ${day.getDate()}?`,
+                                            [
+                                                { text: 'Cancelar' },
+                                                { 
+                                                    text: 'Marcar completo', 
+                                                    onPress: () => recordProgress(dateKey, selectedHabit.target, true)
+                                                }
+                                            ]
+                                        );
+                                    }
+                                }}
+                                disabled={isFuture}
+                            >
                                 <Text style={[
                                     styles.dayNumber,
                                     { color: colors.text },
@@ -231,7 +382,7 @@ const HabitCalendarScreen = ({ navigation, route }) => {
                                         </Text>
                                     )}
                                 </View>
-                            </View>
+                            </TouchableOpacity>
                         );
                     })}
                 </View>
@@ -266,7 +417,27 @@ const HabitCalendarScreen = ({ navigation, route }) => {
                             const isCurrentMonth = day.getMonth() === currentDate.getMonth();
                             
                             return (
-                                <View key={dayIndex} style={styles.monthDayCell}>
+                                <TouchableOpacity
+                                    key={dayIndex}
+                                    style={styles.monthDayCell}
+                                    onPress={() => {
+                                        if (!isFuture && isCurrentMonth) {
+                                            const dateKey = getDateKey(day);
+                                            Alert.alert(
+                                                'Editar progreso',
+                                                `¿Deseas modificar el progreso del ${day.getDate()}?`,
+                                                [
+                                                    { text: 'Cancelar' },
+                                                    { 
+                                                        text: 'Marcar completo', 
+                                                        onPress: () => recordProgress(dateKey, selectedHabit.target, true)
+                                                    }
+                                                ]
+                                            );
+                                        }
+                                    }}
+                                    disabled={isFuture || !isCurrentMonth}
+                                >
                                     <Text style={[
                                         styles.monthDayNumber,
                                         { color: colors.text },
@@ -285,7 +456,7 @@ const HabitCalendarScreen = ({ navigation, route }) => {
                                             <View style={[styles.completedDot, { backgroundColor: colors.surface }]} />
                                         )}
                                     </View>
-                                </View>
+                                </TouchableOpacity>
                             );
                         })}
                     </View>
@@ -294,12 +465,49 @@ const HabitCalendarScreen = ({ navigation, route }) => {
         );
     };
 
+    if (loading && userHabits.length === 0) {
+        return (
+            <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={[styles.loadingText, { color: colors.text }]}>Cargando hábitos...</Text>
+            </View>
+        );
+    }
+
+    if (error) {
+        return (
+            <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
+                <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+                <TouchableOpacity
+                    style={[styles.retryButton, { backgroundColor: colors.primary }]}
+                    onPress={loadUserHabits}
+                >
+                    <Text style={styles.retryButtonText}>Reintentar</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+    if (userHabits.length === 0 && !loading) {
+        return (
+            <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                    No tienes hábitos creados
+                </Text>
+                <TouchableOpacity
+                    style={[styles.createButton, { backgroundColor: colors.primary }]}
+                    onPress={() => navigation.goBack()} // ✅ Cambiar a goBack en lugar de navigate
+                >
+                    <Text style={styles.createButtonText}>Volver</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
             {/* Header */}
-            <View style={[styles.header, { 
-               
-            }]}>
+            <View style={styles.header}>
                 <TouchableOpacity 
                     onPress={() => navigation.goBack()} 
                     style={[styles.backButton, { backgroundColor: colors.cardCompleted }]}
@@ -314,132 +522,147 @@ const HabitCalendarScreen = ({ navigation, route }) => {
                 {/* Selector de hábito */}
                 <View style={styles.habitSelector}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                        {mockHabits.map((habit) => (
+                        {userHabits.map((habit) => (
                             <TouchableOpacity
-                                key={habit.id}
+                                key={habit.id_habito}
                                 style={[
                                     styles.habitChip,
                                     { backgroundColor: habit.color + '20' },
-                                    selectedHabit.id === habit.id && { backgroundColor: habit.color }
+                                    selectedHabit?.id_habito === habit.id_habito && { backgroundColor: habit.color }
                                 ]}
-                                onPress={() => setSelectedHabit(habit)}
+                                onPress={() => handleHabitChange(habit)}
                             >
                                 <Text style={[
                                     styles.habitChipText,
                                     { color: habit.color },
-                                    selectedHabit.id === habit.id && { color: '#fff' }
+                                    selectedHabit?.id_habito === habit.id_habito && { color: '#fff' }
                                 ]}>
-                                    {habit.name}
+                                    {habit.nombre}
                                 </Text>
                             </TouchableOpacity>
                         ))}
                     </ScrollView>
                 </View>
 
-                {/* Controles de vista */}
-                <View style={styles.viewControls}>
-                    <View style={[styles.viewToggle, { backgroundColor: colors.surfaceVariant }]}>
-                        <TouchableOpacity
-                            style={[
-                                styles.toggleButton,
-                                viewMode === 'semanal' && { backgroundColor: colors.primary }
-                            ]}
-                            onPress={() => setViewMode('semanal')}
-                        >
-                            <Text style={[
-                                styles.toggleText,
-                                { color: colors.textSecondary },
-                                viewMode === 'semanal' && { color: '#fff', fontWeight: '500' }
-                            ]}>
-                                Semanal
-                            </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[
-                                styles.toggleButton,
-                                viewMode === 'mensual' && { backgroundColor: colors.primary }
-                            ]}
-                            onPress={() => setViewMode('mensual')}
-                        >
-                            <Text style={[
-                                styles.toggleText,
-                                { color: colors.textSecondary },
-                                viewMode === 'mensual' && { color: '#fff', fontWeight: '500' }
-                            ]}>
-                                Mensual
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
-                {/* Navegación de período */}
-                <View style={styles.periodNavigation}>
-                    <TouchableOpacity
-                        style={[styles.navButton, { backgroundColor: colors.cardCompleted }]}
-                        onPress={() => navigatePeriod(-1)}
-                    >
-                        <ChevronLeft size={24 * SCALE} color={colors.primary} />
-                    </TouchableOpacity>
-                    
-                    <Text style={[styles.periodText, { color: colors.text }]}>
-                        {formatPeriod()}
-                    </Text>
-                    
-                    <TouchableOpacity
-                        style={[styles.navButton, { backgroundColor: colors.cardCompleted }]}
-                        onPress={() => navigatePeriod(1)}
-                    >
-                        <ChevronRight size={24 * SCALE} color={colors.primary} />
-                    </TouchableOpacity>
-                </View>
-
-                {/* Calendario */}
-                <View style={[styles.calendarContainer, { 
-                    backgroundColor: colors.card,
-                    shadowColor: colors.text 
-                }]}>
-                    {viewMode === 'semanal' ? renderWeeklyCalendar() : renderMonthlyCalendar()}
-                </View>
-
-                {/* Estadísticas */}
-                <View style={[styles.statsContainer, { 
-                    backgroundColor: colors.card,
-                    shadowColor: colors.text 
-                }]}>
-                    <Text style={[styles.statsTitle, { color: colors.text }]}>
-                        Estadísticas del período
-                    </Text>
-                    <View style={styles.statsGrid}>
-                        <View style={[styles.statCard, { backgroundColor: colors.surfaceVariant }]}>
-                            <Target size={20 * SCALE} color={selectedHabit.color} />
-                            <Text style={[styles.statValue, { color: colors.text }]}>
-                                {Object.values(habitData).filter(d => d.completed).length}
-                            </Text>
-                            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                                Días completados
-                            </Text>
+                {selectedHabit && (
+                    <>
+                        {/* Controles de vista */}
+                        <View style={styles.viewControls}>
+                            <View style={[styles.viewToggle, { backgroundColor: colors.surfaceVariant }]}>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.toggleButton,
+                                        viewMode === 'semanal' && { backgroundColor: colors.primary }
+                                    ]}
+                                    onPress={() => setViewMode('semanal')}
+                                >
+                                    <Text style={[
+                                        styles.toggleText,
+                                        { color: colors.textSecondary },
+                                        viewMode === 'semanal' && { color: '#fff', fontWeight: '500' }
+                                    ]}>
+                                        Semanal
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.toggleButton,
+                                        viewMode === 'mensual' && { backgroundColor: colors.primary }
+                                    ]}
+                                    onPress={() => setViewMode('mensual')}
+                                >
+                                    <Text style={[
+                                        styles.toggleText,
+                                        { color: colors.textSecondary },
+                                        viewMode === 'mensual' && { color: '#fff', fontWeight: '500' }
+                                    ]}>
+                                        Mensual
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
-                        <View style={[styles.statCard, { backgroundColor: colors.surfaceVariant }]}>
-                            <CalendarIcon size={20 * SCALE} color={selectedHabit.color} />
-                            <Text style={[styles.statValue, { color: colors.text }]}>
-                                {Math.round((Object.values(habitData).filter(d => d.completed).length / 
-                                Object.keys(habitData).length) * 100) || 0}%
+
+                        {/* Navegación de período */}
+                        <View style={styles.periodNavigation}>
+                            <TouchableOpacity
+                                style={[styles.navButton, { backgroundColor: colors.cardCompleted }]}
+                                onPress={() => navigatePeriod(-1)}
+                            >
+                                <ChevronLeft size={24 * SCALE} color={colors.primary} />
+                            </TouchableOpacity>
+                            
+                            <Text style={[styles.periodText, { color: colors.text }]}>
+                                {formatPeriod()}
                             </Text>
-                            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                                Porcentaje
-                            </Text>
+                            
+                            <TouchableOpacity
+                                style={[styles.navButton, { backgroundColor: colors.cardCompleted }]}
+                                onPress={() => navigatePeriod(1)}
+                            >
+                                <ChevronRight size={24 * SCALE} color={colors.primary} />
+                            </TouchableOpacity>
                         </View>
-                        <View style={[styles.statCard, { backgroundColor: colors.surfaceVariant }]}>
-                            <CheckCircle size={20 * SCALE} color={selectedHabit.color} />
-                            <Text style={[styles.statValue, { color: colors.text }]}>
-                                {Object.values(habitData).reduce((sum, d) => sum + (d.value || 0), 0)}
-                            </Text>
-                            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                                Total realizado
-                            </Text>
+
+                        {/* Calendario */}
+                        <View style={[styles.calendarContainer, { 
+                            backgroundColor: colors.card,
+                            shadowColor: colors.text 
+                        }]}>
+                            {loading ? (
+                                <View style={styles.calendarLoading}>
+                                    <ActivityIndicator size="small" color={colors.primary} />
+                                </View>
+                            ) : (
+                                viewMode === 'semanal' ? renderWeeklyCalendar() : renderMonthlyCalendar()
+                            )}
                         </View>
-                    </View>
-                </View>
+
+                        {/* Estadísticas */}
+                        <View style={[styles.statsContainer, { 
+                            backgroundColor: colors.card,
+                            shadowColor: colors.text 
+                        }]}>
+                            <Text style={[styles.statsTitle, { color: colors.text }]}>
+                                Estadísticas del período
+                            </Text>
+                            {loading ? (
+                                <View style={styles.statsLoading}>
+                                    <ActivityIndicator size="small" color={colors.primary} />
+                                </View>
+                            ) : (
+                                <View style={styles.statsGrid}>
+                                    <View style={[styles.statCard, { backgroundColor: colors.surfaceVariant }]}>
+                                        <Target size={20 * SCALE} color={selectedHabit.color} />
+                                        <Text style={[styles.statValue, { color: colors.text }]}>
+                                            {stats?.diasCompletados || 0}
+                                        </Text>
+                                        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                                            Días completados
+                                        </Text>
+                                    </View>
+                                    <View style={[styles.statCard, { backgroundColor: colors.surfaceVariant }]}>
+                                        <CalendarIcon size={20 * SCALE} color={selectedHabit.color} />
+                                        <Text style={[styles.statValue, { color: colors.text }]}>
+                                            {stats?.porcentaje || 0}%
+                                        </Text>
+                                        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                                            Porcentaje
+                                        </Text>
+                                    </View>
+                                    <View style={[styles.statCard, { backgroundColor: colors.surfaceVariant }]}>
+                                        <TrendingUp size={20 * SCALE} color={selectedHabit.color} />
+                                        <Text style={[styles.statValue, { color: colors.text }]}>
+                                            {streak}
+                                        </Text>
+                                        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                                            Racha actual
+                                        </Text>
+                                    </View>
+                                </View>
+                            )}
+                        </View>
+                    </>
+                )}
 
                 <View style={{ height: 20 * SCALE }} />
             </ScrollView>
@@ -450,6 +673,10 @@ const HabitCalendarScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+    },
+    centered: {
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     header: {
         flexDirection: 'row',
@@ -476,6 +703,40 @@ const styles = StyleSheet.create({
     content: {
         flex: 1,
         padding: 16 * SCALE,
+    },
+    loadingText: {
+        marginTop: 10 * SCALE,
+        fontSize: 16 * SCALE,
+    },
+    errorText: {
+        fontSize: 16 * SCALE,
+        textAlign: 'center',
+        marginBottom: 20 * SCALE,
+    },
+    retryButton: {
+        paddingHorizontal: 20 * SCALE,
+        paddingVertical: 10 * SCALE,
+        borderRadius: 8 * SCALE,
+    },
+    retryButtonText: {
+        color: '#fff',
+        fontSize: 16 * SCALE,
+        fontWeight: '500',
+    },
+    emptyText: {
+        fontSize: 16 * SCALE,
+        textAlign: 'center',
+        marginBottom: 20 * SCALE,
+    },
+    createButton: {
+        paddingHorizontal: 20 * SCALE,
+        paddingVertical: 10 * SCALE,
+        borderRadius: 8 * SCALE,
+    },
+    createButtonText: {
+        color: '#fff',
+        fontSize: 16 * SCALE,
+        fontWeight: '500',
     },
     habitSelector: {
         marginBottom: 20 * SCALE,
@@ -533,6 +794,10 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
+    },
+    calendarLoading: {
+        paddingVertical: 20 * SCALE,
+        alignItems: 'center',
     },
     // Estilos para vista semanal
     weeklyContainer: {
@@ -617,6 +882,10 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
+    },
+    statsLoading: {
+        paddingVertical: 20 * SCALE,
+        alignItems: 'center',
     },
     statsTitle: {
         fontSize: 16 * SCALE,

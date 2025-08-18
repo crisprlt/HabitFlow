@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -10,7 +10,8 @@ import {
     Modal,
     KeyboardAvoidingView,
     Platform,
-    Dimensions
+    Dimensions,
+    ActivityIndicator
 } from 'react-native';
 import {
     Plus,
@@ -25,48 +26,21 @@ import {
     CheckCircle2,
     ArrowLeft
 } from 'lucide-react-native';
-import { useTheme } from './ThemeContext'; // ✅ Importar el hook del contexto
+import { useTheme } from './ThemeContext';
+import api from '../services/api';
+import * as SecureStore from 'expo-secure-store';
 
 const SCALE = 1.2;
 const { height: screenHeight } = Dimensions.get('window');
 
 const TodoScreen = ({ navigation }) => {
-    const { colors } = useTheme(); // ✅ Usar el contexto de tema
+    const { colors } = useTheme();
+    const [userId, setUserId] = useState(null); // ✅ Estado para userId
     
-    const [areas, setAreas] = useState([
-        {
-            id: 1,
-            name: 'Trabajo',
-            color: '#968ce4',
-            emoji: '💼',
-            tasks: [
-                { id: 1, text: 'Revisar emails', completed: false, priority: 'alta' },
-                { id: 2, text: 'Preparar presentación', completed: true, priority: 'alta' },
-                { id: 3, text: 'Llamar a cliente', completed: false, priority: 'media' }
-            ]
-        },
-        {
-            id: 2,
-            name: 'Personal',
-            color: '#ff6b6b',
-            emoji: '🏠',
-            tasks: [
-                { id: 4, text: 'Comprar comida', completed: false, priority: 'media' },
-                { id: 5, text: 'Limpiar casa', completed: false, priority: 'baja' }
-            ]
-        },
-        {
-            id: 3,
-            name: 'Salud',
-            color: '#4ecdc4',
-            emoji: '💪',
-            tasks: [
-                { id: 6, text: 'Ir al gimnasio', completed: true, priority: 'alta' },
-                { id: 7, text: 'Cita médica', completed: false, priority: 'alta' }
-            ]
-        }
-    ]);
-
+    const [areas, setAreas] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    
     const [showNewAreaModal, setShowNewAreaModal] = useState(false);
     const [showNewTaskModal, setShowNewTaskModal] = useState(false);
     const [selectedArea, setSelectedArea] = useState(null);
@@ -98,73 +72,121 @@ const TodoScreen = ({ navigation }) => {
         { value: 'baja', label: 'Baja', color: colors.priorityLow || '#2ed573' }
     ];
 
-    const createNewArea = () => {
+    // =============================
+    // API FUNCTIONS
+    // =============================
+
+    const loadAreasAndTasks = async () => {
+        if (!userId) return; // ✅ No cargar si no hay userId
+        
+        try {
+            setLoading(true);
+            const response = await api.get(`/api/other/todo/${userId}`);
+            setAreas(response.data);
+        } catch (error) {
+            console.error('Error cargando áreas:', error);
+            Alert.alert('Error', 'No se pudieron cargar las áreas');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const createNewArea = async () => {
         if (!newAreaName.trim()) {
             Alert.alert('Error', 'Por favor ingresa un nombre para el área');
             return;
         }
 
-        const newArea = {
-            id: Date.now(),
-            name: newAreaName.trim(),
-            color: newAreaColor,
-            emoji: newAreaEmoji,
-            tasks: []
-        };
+        if (!userId) {
+            Alert.alert('Error', 'Usuario no identificado');
+            return;
+        }
 
-        setAreas([...areas, newArea]);
-        setNewAreaName('');
-        setNewAreaEmoji('📝');
-        setNewAreaColor('#968ce4');
-        setShowNewAreaModal(false);
+        try {
+            const response = await api.post(`/api/other/todo/${userId}/areas`, {
+                name: newAreaName.trim(),
+                emoji: newAreaEmoji,
+                color: newAreaColor
+            });
+
+            // Agregar el área a la lista con tasks vacío
+            const newAreaWithTasks = { ...response.data, tasks: [] };
+            setAreas([...areas, newAreaWithTasks]);
+            
+            setNewAreaName('');
+            setNewAreaEmoji('📝');
+            setNewAreaColor('#968ce4');
+            setShowNewAreaModal(false);
+        } catch (error) {
+            console.error('Error creando área:', error);
+            Alert.alert('Error', 'No se pudo crear el área');
+        }
     };
 
-    const addTaskToArea = () => {
+    const addTaskToArea = async () => {
         if (!newTaskText.trim()) {
             Alert.alert('Error', 'Por favor ingresa el texto de la tarea');
             return;
         }
 
-        const newTask = {
-            id: Date.now(),
-            text: newTaskText.trim(),
-            completed: false,
-            priority: newTaskPriority
-        };
+        try {
+            const response = await api.post(`/api/other/todo/${userId}/areas/${selectedArea.id}/tasks`, {
+                text: newTaskText.trim(),
+                priority: newTaskPriority
+            });
 
-        setAreas(areas.map(area => 
-            area.id === selectedArea.id 
-                ? { ...area, tasks: [...area.tasks, newTask] }
-                : area
-        ));
+            // Actualizar la lista de áreas con la nueva tarea
+            setAreas(areas.map(area => 
+                area.id === selectedArea.id 
+                    ? { ...area, tasks: [...area.tasks, response.data] }
+                    : area
+            ));
 
-        setNewTaskText('');
-        setNewTaskPriority('media');
-        setShowNewTaskModal(false);
-        setSelectedArea(null);
+            setNewTaskText('');
+            setNewTaskPriority('media');
+            setShowNewTaskModal(false);
+            setSelectedArea(null);
+        } catch (error) {
+            console.error('Error creando tarea:', error);
+            Alert.alert('Error', 'No se pudo crear la tarea');
+        }
     };
 
-    const toggleTask = (areaId, taskId) => {
-        setAreas(areas.map(area => 
-            area.id === areaId 
-                ? {
-                    ...area, 
-                    tasks: area.tasks.map(task => 
-                        task.id === taskId 
-                            ? { ...task, completed: !task.completed }
-                            : task
-                    )
-                }
-                : area
-        ));
+    const toggleTask = async (areaId, taskId) => {
+        try {
+            const response = await api.patch(`/api/other/todo/${userId}/areas/${areaId}/tasks/${taskId}/toggle`);
+            
+            setAreas(areas.map(area => 
+                area.id === areaId 
+                    ? {
+                        ...area, 
+                        tasks: area.tasks.map(task => 
+                            task.id === taskId 
+                                ? response.data
+                                : task
+                        )
+                    }
+                    : area
+            ));
+        } catch (error) {
+            console.error('Error cambiando estado de tarea:', error);
+            Alert.alert('Error', 'No se pudo cambiar el estado de la tarea');
+        }
     };
 
-    const deleteTask = (areaId, taskId) => {
-        setAreas(areas.map(area => 
-            area.id === areaId 
-                ? { ...area, tasks: area.tasks.filter(task => task.id !== taskId) }
-                : area
-        ));
+    const deleteTask = async (areaId, taskId) => {
+        try {
+            await api.delete(`/api/other/todo/${userId}/areas/${areaId}/tasks/${taskId}`);
+            
+            setAreas(areas.map(area => 
+                area.id === areaId 
+                    ? { ...area, tasks: area.tasks.filter(task => task.id !== taskId) }
+                    : area
+            ));
+        } catch (error) {
+            console.error('Error eliminando tarea:', error);
+            Alert.alert('Error', 'No se pudo eliminar la tarea');
+        }
     };
 
     const deleteArea = (areaId) => {
@@ -176,7 +198,15 @@ const TodoScreen = ({ navigation }) => {
                 { 
                     text: 'Eliminar', 
                     style: 'destructive',
-                    onPress: () => setAreas(areas.filter(area => area.id !== areaId))
+                    onPress: async () => {
+                        try {
+                            await api.delete(`/api/other/todo/${userId}/areas/${areaId}`);
+                            setAreas(areas.filter(area => area.id !== areaId));
+                        } catch (error) {
+                            console.error('Error eliminando área:', error);
+                            Alert.alert('Error', 'No se pudo eliminar el área');
+                        }
+                    }
                 }
             ]
         );
@@ -188,27 +218,36 @@ const TodoScreen = ({ navigation }) => {
         setEditTaskText(task.text);
     };
 
-    const saveTaskEdit = () => {
+    const saveTaskEdit = async () => {
         if (!editTaskText.trim()) {
             Alert.alert('Error', 'La tarea no puede estar vacía');
             return;
         }
 
-        setAreas(areas.map(area => 
-            area.id === editingTask.areaId 
-                ? {
-                    ...area, 
-                    tasks: area.tasks.map(task => 
-                        task.id === editingTask.taskId 
-                            ? { ...task, text: editTaskText.trim() }
-                            : task
-                    )
-                }
-                : area
-        ));
+        try {
+            const response = await api.put(`/api/other/todo/${userId}/areas/${editingTask.areaId}/tasks/${editingTask.taskId}`, {
+                text: editTaskText.trim()
+            });
 
-        setEditingTask(null);
-        setEditTaskText('');
+            setAreas(areas.map(area => 
+                area.id === editingTask.areaId 
+                    ? {
+                        ...area, 
+                        tasks: area.tasks.map(task => 
+                            task.id === editingTask.taskId 
+                                ? response.data
+                                : task
+                        )
+                    }
+                    : area
+            ));
+
+            setEditingTask(null);
+            setEditTaskText('');
+        } catch (error) {
+            console.error('Error actualizando tarea:', error);
+            Alert.alert('Error', 'No se pudo actualizar la tarea');
+        }
     };
 
     const cancelTaskEdit = () => {
@@ -216,11 +255,67 @@ const TodoScreen = ({ navigation }) => {
         setEditTaskText('');
     };
 
+    // =============================
+    // UTILITY FUNCTIONS
+    // =============================
+
     const getAreaStats = (area) => {
         const total = area.tasks.length;
         const completed = area.tasks.filter(task => task.completed).length;
         return { total, completed, percentage: total > 0 ? (completed / total) * 100 : 0 };
     };
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await loadAreasAndTasks();
+        setRefreshing(false);
+    };
+
+    // =============================
+    // EFFECTS
+    // =============================
+
+    // ✅ Obtener userId del SecureStore al cargar el componente
+    useEffect(() => {
+        const getUserId = async () => {
+            try {
+                const storedUserId = await SecureStore.getItemAsync('user_id');
+                console.log('✅ TodoScreen - User ID obtenido del storage:', storedUserId);
+                
+                if (storedUserId) {
+                    setUserId(storedUserId);
+                } else {
+                    console.log('❌ No se encontró user_id en SecureStore');
+                    Alert.alert(
+                        'Sesión expirada',
+                        'Por favor, inicia sesión nuevamente',
+                        [
+                            {
+                                text: 'OK',
+                                onPress: () => navigation.navigate('Login')
+                            }
+                        ]
+                    );
+                }
+            } catch (error) {
+                console.error('❌ Error obteniendo userId del storage:', error);
+                Alert.alert('Error', 'Error al obtener información de usuario');
+            }
+        };
+
+        getUserId();
+    }, []);
+
+    // Cargar datos cuando se obtiene el userId
+    useEffect(() => {
+        if (userId) {
+            loadAreasAndTasks();
+        }
+    }, [userId]);
+
+    // =============================
+    // RENDER FUNCTIONS
+    // =============================
 
     const renderTaskItem = (task, area, isCompleted = false) => {
         const isEditing = editingTask && 
@@ -407,6 +502,17 @@ const TodoScreen = ({ navigation }) => {
         );
     };
 
+    if (loading || !userId) {
+        return (
+            <View style={[styles.container, styles.loadingContainer, { backgroundColor: colors.background }]}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={[styles.loadingText, { color: colors.text }]}>
+                    {!userId ? 'Verificando sesión...' : 'Cargando áreas...'}
+                </Text>
+            </View>
+        );
+    }
+
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
             {/* Header */}
@@ -430,7 +536,12 @@ const TodoScreen = ({ navigation }) => {
             </View>
 
             {/* Lista de áreas */}
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            <ScrollView 
+                style={styles.content} 
+                showsVerticalScrollIndicator={false}
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+            >
                 {areas.map(area => renderAreaCard(area))}
                 
                 {areas.length === 0 && (
@@ -641,6 +752,14 @@ const TodoScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+    },
+    loadingContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loadingText: {
+        marginTop: 16 * SCALE,
+        fontSize: 16 * SCALE,
     },
     header: {
         flexDirection: 'row',
