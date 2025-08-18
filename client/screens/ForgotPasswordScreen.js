@@ -21,6 +21,7 @@ import {
   Info
 } from 'lucide-react-native';
 import { useTheme } from './ThemeContext'; // ✅ Importar el hook del contexto
+import api from '../services/api'; // ✅ Importar el API configurado
 
 const SCALE = 1.0;
 
@@ -55,23 +56,48 @@ const ForgotPasswordScreen = ({ navigation }) => {
     setIsLoading(true);
 
     try {
-      // Simular llamada a API
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log('Enviando código de recuperación a:', email);
       
-      // Aquí harías la llamada real a tu API
-      console.log('Sending reset code to:', email);
+      const response = await api.post('/api/users/enviar-codigo-recuperacion', {
+        email: email.trim().toLowerCase()
+      });
 
-      setEmailSent(true);
-      startCountdown();
+      console.log('Respuesta del servidor:', response.data);
 
-      Alert.alert(
-        '¡Código enviado!',
-        `Hemos enviado un código de recuperación a ${email}. Revisa tu bandeja de entrada y spam.`,
-        [{ text: 'OK' }]
-      );
+      if (response.data.success) {
+        setEmailSent(true);
+        startCountdown();
+
+        Alert.alert(
+          '¡Código enviado!',
+          response.data.message || `Hemos enviado un código de recuperación a ${email}. Revisa tu bandeja de entrada y spam.`,
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Error', 
+          response.data.message || 'No se pudo enviar el código. Inténtalo de nuevo.'
+        );
+      }
 
     } catch (error) {
-      Alert.alert('Error', 'No se pudo enviar el código. Verifica tu correo e inténtalo de nuevo.');
+      console.error('Error enviando código:', error);
+      
+      // Manejar diferentes tipos de errores
+      if (error.response) {
+        // El servidor respondió con un error
+        const errorMessage = error.response.data?.message || 'Error del servidor';
+        Alert.alert('Error', errorMessage);
+      } else if (error.request) {
+        // No se pudo conectar al servidor
+        Alert.alert(
+          'Error de conexión', 
+          'No se pudo conectar al servidor. Verifica tu conexión a internet.'
+        );
+      } else {
+        // Otro tipo de error
+        Alert.alert('Error', 'Ocurrió un error inesperado. Inténtalo de nuevo.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -84,16 +110,39 @@ const ForgotPasswordScreen = ({ navigation }) => {
     setIsLoading(true);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      console.log('Reenviando código a:', email);
       
-      console.log('Resending reset code to:', email);
-      
-      startCountdown();
-      
-      Alert.alert('¡Código reenviado!', 'Hemos enviado un nuevo código a tu correo.');
+      const response = await api.post('/api/users/enviar-codigo-recuperacion', {
+        email: email.trim().toLowerCase()
+      });
+
+      if (response.data.success) {
+        startCountdown();
+        Alert.alert(
+          '¡Código reenviado!', 
+          response.data.message || 'Hemos enviado un nuevo código a tu correo.'
+        );
+      } else {
+        Alert.alert(
+          'Error', 
+          response.data.message || 'No se pudo reenviar el código. Inténtalo de nuevo.'
+        );
+      }
 
     } catch (error) {
-      Alert.alert('Error', 'No se pudo reenviar el código. Inténtalo de nuevo.');
+      console.error('Error reenviando código:', error);
+      
+      if (error.response) {
+        const errorMessage = error.response.data?.message || 'Error del servidor';
+        Alert.alert('Error', errorMessage);
+      } else if (error.request) {
+        Alert.alert(
+          'Error de conexión', 
+          'No se pudo conectar al servidor. Verifica tu conexión a internet.'
+        );
+      } else {
+        Alert.alert('Error', 'Ocurrió un error inesperado. Inténtalo de nuevo.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -121,15 +170,12 @@ const ForgotPasswordScreen = ({ navigation }) => {
     navigation.goBack();
   };
 
-  // Función para ir a verificar código (simulated)
+  // Función para ir a verificar código
   const handleVerifyCode = () => {
-    Alert.alert(
-      'Verificar código',
-      'En una app real, aquí navegarías a una pantalla para ingresar el código de verificación.',
-      [
-        { text: 'OK' }
-      ]
-    );
+    // Navegar a la pantalla de verificar código pasando el email
+    navigation.navigate('VerifyCode', { 
+      email: email.trim().toLowerCase() 
+    });
   };
 
   const renderInitialForm = () => (
@@ -172,6 +218,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
             autoCapitalize="none"
             autoCorrect={false}
             autoFocus={true}
+            editable={!isLoading}
           />
         </View>
         
@@ -238,6 +285,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
             shadowColor: colors.primary 
           }]}
           onPress={handleVerifyCode}
+          disabled={isLoading}
         >
           <Text style={styles.verifyButtonText}>Verificar código</Text>
         </TouchableOpacity>
@@ -249,7 +297,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
               backgroundColor: colors.surfaceVariant,
               borderColor: colors.border 
             },
-            countdown > 0 && { backgroundColor: colors.surfaceVariant }
+            (countdown > 0 || isLoading) && { backgroundColor: colors.surfaceVariant }
           ]}
           onPress={handleResendCode}
           disabled={countdown > 0 || isLoading}
@@ -261,17 +309,20 @@ const ForgotPasswordScreen = ({ navigation }) => {
           )}
           <Text style={[
             styles.resendButtonText,
-            { color: countdown > 0 ? colors.textSecondary : colors.primary }
+            { color: (countdown > 0 || isLoading) ? colors.textSecondary : colors.primary }
           ]}>
-            {countdown > 0 ? `Reenviar en ${countdown}s` : 'Reenviar código'}
+            {isLoading ? 'Enviando...' : countdown > 0 ? `Reenviar en ${countdown}s` : 'Reenviar código'}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={styles.backToLoginButton}
           onPress={handleBackToLogin}
+          disabled={isLoading}
         >
-          <Text style={[styles.backToLoginText, { color: colors.textSecondary }]}>
+          <Text style={[styles.backToLoginText, { 
+            color: isLoading ? colors.textTertiary : colors.textSecondary 
+          }]}>
             Volver al inicio de sesión
           </Text>
         </TouchableOpacity>
@@ -287,18 +338,14 @@ const ForgotPasswordScreen = ({ navigation }) => {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         {/* Header */}
-        <View style={[styles.header, { 
-        }]}>
+        <View style={styles.header}>
           <TouchableOpacity 
             style={[styles.backButton, { backgroundColor: colors.cardCompleted }]}
             onPress={() => navigation.goBack()}
+            disabled={isLoading}
           >
-            <ArrowLeft size={24 * SCALE} color={colors.primary} />
+            <ArrowLeft size={24 * SCALE} color={isLoading ? colors.textTertiary : colors.primary} />
           </TouchableOpacity>
-          {/* <Text style={[styles.title, { color: colors.text }]}>
-            {emailSent ? 'Verificar código' : 'Recuperar contraseña'}
-          </Text> */}
-          {/* <View style={styles.placeholder} /> */}
         </View>
 
         <ScrollView 
@@ -306,6 +353,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.scrollContent}
+          scrollEnabled={!isLoading}
         >
           {emailSent ? renderEmailSentConfirmation() : renderInitialForm()}
         </ScrollView>

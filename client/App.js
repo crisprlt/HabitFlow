@@ -13,6 +13,7 @@ import TodoScreen from './screens/TodoScreen';
 import PerfilScreen from './screens/PerfilScreen';
 import ChangePasswordScreen from './screens/ChangePasswordScreen';
 import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
+import VerifyCodeScreen from './screens/VerifyCodesScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -32,6 +33,8 @@ const AppNavigator = () => {
         <Stack.Screen name="Perfil" component={PerfilScreen} options={{ headerShown: false }} />
         <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ headerShown: false }} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ headerShown: false }} />
+                <Stack.Screen name="VerifyCode" component={VerifyCodeScreen} options={{ headerShown: false }} />
+
       </Stack.Navigator>
     </>
   );

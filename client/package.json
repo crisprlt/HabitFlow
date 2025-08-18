@@ -17,6 +17,7 @@
     "expo": "~53.0.13",
     "expo-auth-session": "~6.2.1",
     "expo-crypto": "~14.1.5",
+    "expo-local-authentication": "^16.0.5",
     "expo-localization": "~16.1.6",
     "expo-secure-store": "~14.2.3",
     "expo-status-bar": "~2.2.3",
