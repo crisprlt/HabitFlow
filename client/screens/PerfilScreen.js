@@ -380,28 +380,6 @@ const PerfilScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Stats Grid */}
-        <View style={styles.statsContainer}>
-          <StatCard 
-            icon={Target}
-            title="Hábitos Completados"
-            value={userData.habitosCompletados}
-            color="#4ecdc4"
-          />
-          <StatCard 
-            icon={Award}
-            title="Racha Actual"
-            value={`${userData.racha} días`}
-            color="#ff6b6b"
-          />
-          <StatCard 
-            icon={BarChart3}
-            title="Progreso General"
-            value="78%"
-            color="#45b7d1"
-          />
-        </View>
-
         {/* Menu Sections */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Cuenta</Text>

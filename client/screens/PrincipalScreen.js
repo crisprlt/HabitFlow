@@ -452,7 +452,6 @@ const PrincipalScreen = ({ navigation }) => {
         ) : (
           habits.map(habit => {
             const Icon = getHabitIcon(habit.icono);
-            const progress = habit.target > 0 ? (habit.current / habit.target) * 100 : 0;
 
             return (
               <View
@@ -518,19 +517,7 @@ const PrincipalScreen = ({ navigation }) => {
                       </TouchableOpacity>
                     </View>
 
-                    {habit.target > 1 && (
-                      <View style={[styles.habitProgressBarBackground, { backgroundColor: colors.border }]}>
-                        <View
-                          style={[
-                            styles.habitProgressBarFill,
-                            { 
-                              width: `${Math.min(progress, 100)}%`, 
-                              backgroundColor: habit.completed ? colors.primary : colors.textTertiary 
-                            }
-                          ]}
-                        />
-                      </View>
-                    )}
+                    {/* ❌ ELIMINADO: Barra de progreso para hábitos con target > 1 */}
                   </View>
                 </View>
               </View>
@@ -890,16 +877,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 14 * SCALE,
   },
-  habitProgressBarBackground: {
-    height: 6 * SCALE,
-    borderRadius: 3 * SCALE,
-    marginTop: 4 * SCALE,
-    overflow: 'hidden',
-  },
-  habitProgressBarFill: {
-    height: 6 * SCALE,
-    borderRadius: 3 * SCALE,
-  },
+  // ❌ ELIMINADOS: Estilos de la barra de progreso de hábitos
+  // habitProgressBarBackground y habitProgressBarFill ya no se usan
   notesSection: {
     marginTop: 20 * SCALE,
   },

@@ -289,35 +289,6 @@ const HabitCalendarScreen = ({ navigation, route }) => {
         setStreak(0);
     };
 
-    const recordProgress = async (date, value, completed, nota = '') => {
-        if (!selectedHabit) return;
-
-        try {
-            const progressData = {
-                fecha: date,
-                valor: value,
-                completado: completed,
-                nota: nota
-            };
-
-            const response = await api.post(
-                `/api/calendar/habits/progress/${selectedHabit.id_habito}`,
-                progressData
-            );
-
-            if (response.data.success) {
-                // Recargar datos después de registrar progreso
-                loadHabitData();
-                Alert.alert('Éxito', 'Progreso registrado correctamente');
-            } else {
-                Alert.alert('Error', 'No se pudo registrar el progreso');
-            }
-        } catch (error) {
-            console.error('Error registrando progreso:', error);
-            Alert.alert('Error', 'Error de conexión al registrar progreso');
-        }
-    };
-
     const renderWeeklyCalendar = () => {
         const days = getDaysInWeek();
         const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -338,27 +309,9 @@ const HabitCalendarScreen = ({ navigation, route }) => {
                         const isFuture = day > new Date();
                         
                         return (
-                            <TouchableOpacity
+                            <View
                                 key={index}
                                 style={styles.dayCell}
-                                onPress={() => {
-                                    if (!isFuture) {
-                                        const dateKey = getDateKey(day);
-                                        // Aquí puedes agregar lógica para editar el progreso
-                                        Alert.alert(
-                                            'Editar progreso',
-                                            `¿Deseas modificar el progreso del ${day.getDate()}?`,
-                                            [
-                                                { text: 'Cancelar' },
-                                                { 
-                                                    text: 'Marcar completo', 
-                                                    onPress: () => recordProgress(dateKey, selectedHabit.target, true)
-                                                }
-                                            ]
-                                        );
-                                    }
-                                }}
-                                disabled={isFuture}
                             >
                                 <Text style={[
                                     styles.dayNumber,
@@ -382,7 +335,7 @@ const HabitCalendarScreen = ({ navigation, route }) => {
                                         </Text>
                                     )}
                                 </View>
-                            </TouchableOpacity>
+                            </View>
                         );
                     })}
                 </View>
@@ -417,26 +370,9 @@ const HabitCalendarScreen = ({ navigation, route }) => {
                             const isCurrentMonth = day.getMonth() === currentDate.getMonth();
                             
                             return (
-                                <TouchableOpacity
+                                <View
                                     key={dayIndex}
                                     style={styles.monthDayCell}
-                                    onPress={() => {
-                                        if (!isFuture && isCurrentMonth) {
-                                            const dateKey = getDateKey(day);
-                                            Alert.alert(
-                                                'Editar progreso',
-                                                `¿Deseas modificar el progreso del ${day.getDate()}?`,
-                                                [
-                                                    { text: 'Cancelar' },
-                                                    { 
-                                                        text: 'Marcar completo', 
-                                                        onPress: () => recordProgress(dateKey, selectedHabit.target, true)
-                                                    }
-                                                ]
-                                            );
-                                        }
-                                    }}
-                                    disabled={isFuture || !isCurrentMonth}
                                 >
                                     <Text style={[
                                         styles.monthDayNumber,
@@ -456,7 +392,7 @@ const HabitCalendarScreen = ({ navigation, route }) => {
                                             <View style={[styles.completedDot, { backgroundColor: colors.surface }]} />
                                         )}
                                     </View>
-                                </TouchableOpacity>
+                                </View>
                             );
                         })}
                     </View>

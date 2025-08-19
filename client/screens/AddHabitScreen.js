@@ -66,7 +66,7 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from './ThemeContext';
 import api from '../services/api';
-import * as SecureStore from 'expo-secure-store'; // ✅ Agregar import
+import * as SecureStore from 'expo-secure-store';
 
 const SCALE = 1.2;
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -82,7 +82,7 @@ const AddHabitScreen = ({ navigation, route }) => {
     const habitToEdit = route.params?.habitToEdit;
     const isEditing = !!habitToEdit;
 
-    // ✅ Estado para userId
+    // Estado para userId
     const [userId, setUserId] = useState(null);
     const [userIdLoading, setUserIdLoading] = useState(true);
 
@@ -121,7 +121,7 @@ const AddHabitScreen = ({ navigation, route }) => {
     const [editingItem, setEditingItem] = useState(null);
     const [editItemName, setEditItemName] = useState('');
 
-    // ✅ Obtener userId del SecureStore al cargar el componente
+    // Obtener userId del SecureStore al cargar el componente
     useEffect(() => {
         const getUserId = async () => {
             try {
@@ -154,17 +154,23 @@ const AddHabitScreen = ({ navigation, route }) => {
         getUserId();
     }, []);
 
-    // Listeners para el teclado
+    // Listeners para el teclado mejorados
     useEffect(() => {
-        const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
-            setKeyboardHeight(e.endCoordinates.height);
-            setIsKeyboardVisible(true);
-        });
+        const keyboardDidShowListener = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+            (e) => {
+                setKeyboardHeight(e.endCoordinates.height);
+                setIsKeyboardVisible(true);
+            }
+        );
 
-        const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
-            setKeyboardHeight(0);
-            setIsKeyboardVisible(false);
-        });
+        const keyboardDidHideListener = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+            () => {
+                setKeyboardHeight(0);
+                setIsKeyboardVisible(false);
+            }
+        );
 
         return () => {
             keyboardDidShowListener?.remove();
@@ -227,7 +233,7 @@ const AddHabitScreen = ({ navigation, route }) => {
         ]
     };
 
-    // ✅ Cargar datos iniciales solo cuando tenemos userId
+    // Cargar datos iniciales solo cuando tenemos userId
     useEffect(() => {
         if (userId) {
             loadInitialData();
@@ -255,7 +261,6 @@ const AddHabitScreen = ({ navigation, route }) => {
         } catch (error) {
             console.error('Error cargando datos:', error);
             
-            // Si el error es de autenticación, redirigir al login
             if (error.response?.status === 401) {
                 Alert.alert(
                     'Sesión expirada',
@@ -445,7 +450,7 @@ const AddHabitScreen = ({ navigation, route }) => {
 
         try {
             const habitData = {
-                userId: userId, // ✅ Usar userId del SecureStore
+                userId: userId,
                 name: habitName.trim(),
                 description: habitDescription.trim(),
                 notes: notes.trim(),
@@ -476,7 +481,6 @@ const AddHabitScreen = ({ navigation, route }) => {
         } catch (error) {
             console.error('Error guardando hábito:', error);
             
-            // Si el error es de autenticación, redirigir al login
             if (error.response?.status === 401) {
                 Alert.alert(
                     'Sesión expirada',
@@ -497,7 +501,7 @@ const AddHabitScreen = ({ navigation, route }) => {
         }
     };
 
-    // ✅ Mostrar loading mientras se obtiene el userId
+    // Mostrar loading mientras se obtiene el userId
     if (userIdLoading) {
         return (
             <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
@@ -509,7 +513,7 @@ const AddHabitScreen = ({ navigation, route }) => {
         );
     }
 
-    // ✅ Si no hay userId, mostrar error
+    // Si no hay userId, mostrar error
     if (!userId) {
         return (
             <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
@@ -526,221 +530,245 @@ const AddHabitScreen = ({ navigation, route }) => {
         );
     }
 
-    // Modal para mantenimiento de elementos con diseño mejorado y más grande
+    // Modal mejorado para mantenimiento de elementos con scroll optimizado
     const renderMaintenanceModal = (title, items, type, showModal, setShowModal) => (
         <Modal
             visible={showModal}
             animationType="slide"
             transparent={true}
             onRequestClose={() => setShowModal(false)}
+            statusBarTranslucent={true}
         >
-            <KeyboardAvoidingView 
-                style={styles.modalOverlay} 
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            >
+            <View style={styles.modalOverlay}>
                 <TouchableWithoutFeedback onPress={() => setShowModal(false)}>
-                    <View style={styles.modalOverlay}>
-                        <TouchableWithoutFeedback onPress={() => {}}>
-                            <View style={[styles.modalContainer, { backgroundColor: colors.surface }]}>
-                                {/* Header del modal */}
-                                <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-                                    <Text style={[styles.modalTitle, { color: colors.text }]}>
-                                        Gestionar {title}
-                                    </Text>
-                                    <TouchableOpacity 
-                                        onPress={() => setShowModal(false)}
-                                        style={[styles.closeButton, { backgroundColor: colors.surfaceVariant }]}
+                    <View style={styles.modalBackdrop} />
+                </TouchableWithoutFeedback>
+                
+                <KeyboardAvoidingView 
+                    style={styles.modalKeyboardView} 
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 25}
+                >
+                    <View style={[styles.modalContainer, { backgroundColor: colors.surface }]}>
+                        {/* Header del modal - Fijo */}
+                        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+                            <Text style={[styles.modalTitle, { color: colors.text }]}>
+                                Gestionar {title}
+                            </Text>
+                            <TouchableOpacity 
+                                onPress={() => setShowModal(false)}
+                                style={[styles.closeButton, { backgroundColor: colors.surfaceVariant }]}
+                                activeOpacity={0.7}
+                            >
+                                <X size={20} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Contenido scrolleable */}
+                        <ScrollView 
+                            style={styles.modalScrollContainer}
+                            contentContainerStyle={styles.modalScrollContent}
+                            keyboardShouldPersistTaps="handled"
+                            showsVerticalScrollIndicator={true}
+                            bounces={true}
+                            overScrollMode="always"
+                            nestedScrollEnabled={true}
+                        >
+                            {/* Sección para agregar nuevo elemento */}
+                            <View style={[styles.addNewSection, { borderBottomColor: colors.border }]}>
+                                <Text style={[styles.addNewTitle, { color: colors.textSecondary }]}>
+                                    Agregar nuevo {title.toLowerCase().slice(0, -1)}
+                                </Text>
+                                <View style={styles.addNewInput}>
+                                    <TextInput
+                                        style={[styles.modalInput, { 
+                                            borderColor: colors.border,
+                                            backgroundColor: colors.input,
+                                            color: colors.text,
+                                            flex: 1
+                                        }]}
+                                        value={newItemName}
+                                        onChangeText={setNewItemName}
+                                        placeholder={`Nombre del ${title.toLowerCase().slice(0, -1)}`}
+                                        placeholderTextColor={colors.placeholder}
+                                        returnKeyType="done"
+                                        onSubmitEditing={() => createNewItem(type, newItemName)}
+                                        blurOnSubmit={false}
+                                    />
+                                    <TouchableOpacity
+                                        style={[styles.addButton, { backgroundColor: colors.primary }]}
+                                        onPress={() => createNewItem(type, newItemName)}
+                                        disabled={isLoading}
                                         activeOpacity={0.7}
                                     >
-                                        <X size={20} color={colors.textSecondary} />
+                                        <Plus size={24} color="#fff" />
                                     </TouchableOpacity>
                                 </View>
+                            </View>
 
-                                {/* Sección para agregar nuevo elemento */}
-                                <View style={[styles.addNewSection, { borderBottomColor: colors.border }]}>
-                                    <Text style={[styles.addNewTitle, { color: colors.textSecondary }]}>
-                                        Agregar nuevo {title.toLowerCase().slice(0, -1)}
-                                    </Text>
-                                    <View style={styles.addNewInput}>
-                                        <TextInput
-                                            style={[styles.modalInput, { 
-                                                borderColor: colors.border,
-                                                backgroundColor: colors.input,
-                                                color: colors.text,
-                                                flex: 1
-                                            }]}
-                                            value={newItemName}
-                                            onChangeText={setNewItemName}
-                                            placeholder={`Nombre del ${title.toLowerCase().slice(0, -1)}`}
-                                            placeholderTextColor={colors.placeholder}
-                                            returnKeyType="done"
-                                            onSubmitEditing={() => createNewItem(type, newItemName)}
-                                        />
-                                        <TouchableOpacity
-                                            style={[styles.addButton, { backgroundColor: colors.primary }]}
-                                            onPress={() => createNewItem(type, newItemName)}
-                                            disabled={isLoading}
-                                            activeOpacity={0.7}
-                                        >
-                                            <Plus size={24} color="#fff" />
-                                        </TouchableOpacity>
+                            {/* Lista de elementos existentes */}
+                            <View style={styles.itemsListContainer}>
+                                <Text style={[styles.itemsListTitle, { color: colors.textSecondary }]}>
+                                    {title} existentes ({items.length})
+                                </Text>
+                                
+                                {items.length === 0 ? (
+                                    <View style={styles.emptyState}>
+                                        <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
+                                            No hay {title.toLowerCase()} disponibles
+                                        </Text>
+                                        <Text style={[styles.emptyStateSubtext, { color: colors.placeholder }]}>
+                                            Agrega uno nuevo usando el formulario de arriba
+                                        </Text>
                                     </View>
-                                </View>
-
-                                {/* Lista de elementos existentes */}
-                                <View style={styles.itemsListContainer}>
-                                    <Text style={[styles.itemsListTitle, { color: colors.textSecondary }]}>
-                                        {title} existentes
-                                    </Text>
-                                    
-                                    {items.length === 0 ? (
-                                        <View style={styles.emptyState}>
-                                            <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
-                                                No hay {title.toLowerCase()} disponibles
-                                            </Text>
-                                        </View>
-                                    ) : (
-                                        <FlatList
-                                            data={items}
-                                            keyExtractor={(item) => item.id_categoria || item.id_frecuencia || item.id_unidad_medida}
-                                            renderItem={({ item, index }) => {
-                                                const itemId = item.id_categoria || item.id_frecuencia || item.id_unidad_medida;
-                                                const isEditingThisItem = editingItem && (editingItem.id_categoria === itemId || editingItem.id_frecuencia === itemId || editingItem.id_unidad_medida === itemId);
-                                                
-                                                return (
-                                                    <View style={[
+                                ) : (
+                                    <View style={styles.itemsContainer}>
+                                        {items.map((item, index) => {
+                                            const itemId = item.id_categoria || item.id_frecuencia || item.id_unidad_medida;
+                                            const isEditingThisItem = editingItem && (
+                                                editingItem.id_categoria === itemId || 
+                                                editingItem.id_frecuencia === itemId || 
+                                                editingItem.id_unidad_medida === itemId
+                                            );
+                                            
+                                            return (
+                                                <View 
+                                                    key={itemId}
+                                                    style={[
                                                         styles.itemRow, 
                                                         { 
                                                             borderBottomColor: colors.border,
-                                                            backgroundColor: index % 2 === 0 ? colors.background + '50' : 'transparent'
+                                                            backgroundColor: index % 2 === 0 ? colors.background + '30' : 'transparent'
                                                         }
-                                                    ]}>
-                                                        {isEditingThisItem ? (
-                                                            <View style={styles.editingRow}>
-                                                                <TextInput
-                                                                    style={[styles.editInput, {
-                                                                        borderColor: colors.border,
-                                                                        backgroundColor: colors.input,
-                                                                        color: colors.text,
-                                                                        flex: 1
-                                                                    }]}
-                                                                    value={editItemName}
-                                                                    onChangeText={setEditItemName}
-                                                                    placeholder="Nuevo nombre"
-                                                                    placeholderTextColor={colors.placeholder}
-                                                                    autoFocus
-                                                                    returnKeyType="done"
-                                                                    onSubmitEditing={() => editItem(type, itemId, editItemName)}
-                                                                />
-                                                                <View style={styles.editActions}>
-                                                                    <TouchableOpacity
-                                                                        style={[styles.actionButton, { backgroundColor: colors.surfaceVariant }]}
-                                                                        onPress={cancelEditItem}
-                                                                        activeOpacity={0.7}
-                                                                    >
-                                                                        <X size={18} color={colors.textSecondary} />
-                                                                    </TouchableOpacity>
-                                                                    <TouchableOpacity
-                                                                        style={[styles.actionButton, { backgroundColor: colors.primary + '20' }]}
-                                                                        onPress={() => editItem(type, itemId, editItemName)}
-                                                                        activeOpacity={0.7}
-                                                                    >
-                                                                        <Check size={18} color={colors.primary} />
-                                                                    </TouchableOpacity>
-                                                                </View>
+                                                    ]}
+                                                >
+                                                    {isEditingThisItem ? (
+                                                        <View style={styles.editingRow}>
+                                                            <TextInput
+                                                                style={[styles.editInput, {
+                                                                    borderColor: colors.border,
+                                                                    backgroundColor: colors.input,
+                                                                    color: colors.text,
+                                                                    flex: 1
+                                                                }]}
+                                                                value={editItemName}
+                                                                onChangeText={setEditItemName}
+                                                                placeholder="Nuevo nombre"
+                                                                placeholderTextColor={colors.placeholder}
+                                                                autoFocus
+                                                                returnKeyType="done"
+                                                                onSubmitEditing={() => editItem(type, itemId, editItemName)}
+                                                                blurOnSubmit={false}
+                                                            />
+                                                            <View style={styles.editActions}>
+                                                                <TouchableOpacity
+                                                                    style={[styles.actionButton, { backgroundColor: colors.surfaceVariant }]}
+                                                                    onPress={cancelEditItem}
+                                                                    activeOpacity={0.7}
+                                                                >
+                                                                    <X size={18} color={colors.textSecondary} />
+                                                                </TouchableOpacity>
+                                                                <TouchableOpacity
+                                                                    style={[styles.actionButton, { backgroundColor: colors.primary + '20' }]}
+                                                                    onPress={() => editItem(type, itemId, editItemName)}
+                                                                    activeOpacity={0.7}
+                                                                >
+                                                                    <Check size={18} color={colors.primary} />
+                                                                </TouchableOpacity>
                                                             </View>
-                                                        ) : (
-                                                            <>
-                                                                <View style={styles.itemInfo}>
-                                                                    <Text style={[styles.itemText, { color: colors.text }]}>
-                                                                        {item.descripcion}
-                                                                    </Text>
-                                                                </View>
-                                                                <View style={styles.itemActions}>
-                                                                    <TouchableOpacity
-                                                                        style={[styles.actionButton, { backgroundColor: colors.primary + '15' }]}
-                                                                        onPress={() => startEditItem(item)}
-                                                                        activeOpacity={0.7}
-                                                                    >
-                                                                        <Edit3 size={18} color={colors.primary} />
-                                                                    </TouchableOpacity>
-                                                                    <TouchableOpacity
-                                                                        style={[styles.actionButton, { backgroundColor: colors.error + '15' }]}
-                                                                        onPress={() => deleteItem(type, itemId)}
-                                                                        activeOpacity={0.7}
-                                                                    >
-                                                                        <Trash2 size={18} color={colors.error} />
-                                                                    </TouchableOpacity>
-                                                                </View>
-                                                            </>
-                                                        )}
-                                                    </View>
-                                                );
-                                            }}
-                                            style={styles.itemsList}
-                                            keyboardShouldPersistTaps="handled"
-                                            showsVerticalScrollIndicator={true}
-                                            contentContainerStyle={styles.itemsListContent}
-                                            bounces={true}
-                                            scrollEventThrottle={16}
-                                            removeClippedSubviews={false}
-                                        />
-                                    )}
-                                </View>
+                                                        </View>
+                                                    ) : (
+                                                        <>
+                                                            <View style={styles.itemInfo}>
+                                                                <Text style={[styles.itemText, { color: colors.text }]}>
+                                                                    {item.descripcion}
+                                                                </Text>
+                                                            </View>
+                                                            <View style={styles.itemActions}>
+                                                                <TouchableOpacity
+                                                                    style={[styles.actionButton, { backgroundColor: colors.primary + '15' }]}
+                                                                    onPress={() => startEditItem(item)}
+                                                                    activeOpacity={0.7}
+                                                                >
+                                                                    <Edit3 size={18} color={colors.primary} />
+                                                                </TouchableOpacity>
+                                                                <TouchableOpacity
+                                                                    style={[styles.actionButton, { backgroundColor: colors.error + '15' }]}
+                                                                    onPress={() => deleteItem(type, itemId)}
+                                                                    activeOpacity={0.7}
+                                                                >
+                                                                    <Trash2 size={18} color={colors.error} />
+                                                                </TouchableOpacity>
+                                                            </View>
+                                                        </>
+                                                    )}
+                                                </View>
+                                            );
+                                        })}
+                                    </View>
+                                )}
                             </View>
-                        </TouchableWithoutFeedback>
+                        </ScrollView>
                     </View>
-                </TouchableWithoutFeedback>
-            </KeyboardAvoidingView>
+                </KeyboardAvoidingView>
+            </View>
         </Modal>
     );
 
     return (
-        <KeyboardAvoidingView 
-            style={[styles.container, { backgroundColor: colors.background }]}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-        >
-            <TouchableWithoutFeedback onPress={dismissKeyboard}>
-                <View style={styles.container}>
-                    {/* Header */}
-                    <View style={styles.header}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+            {/* Header - Fijo */}
+            <View style={styles.header}>
+                <TouchableOpacity 
+                    onPress={() => navigation.goBack()} 
+                    style={[styles.backButton, { backgroundColor: colors.cardCompleted }]}
+                >
+                    <ArrowLeft size={24 * SCALE} color={colors.primary} />
+                </TouchableOpacity>
+                <Text style={[styles.title, { color: colors.text }]}>
+                    {isEditing ? 'Editar Hábito' : 'Nuevo Hábito'}
+                </Text>
+                <View style={styles.headerActions}>
+                    {isEditing && (
                         <TouchableOpacity 
-                            onPress={() => navigation.goBack()} 
-                            style={[styles.backButton, { backgroundColor: colors.cardCompleted }]}
+                            onPress={deleteHabit} 
+                            style={[styles.deleteButton, { backgroundColor: colors.error + '20' }]}
+                            disabled={isLoading}
                         >
-                            <ArrowLeft size={24 * SCALE} color={colors.primary} />
+                            <Trash2 size={20 * SCALE} color={colors.error} />
                         </TouchableOpacity>
-                        <Text style={[styles.title, { color: colors.text }]}>
-                            {isEditing ? 'Editar Hábito' : 'Nuevo Hábito'}
-                        </Text>
-                        <View style={styles.headerActions}>
-                            {isEditing && (
-                                <TouchableOpacity 
-                                    onPress={deleteHabit} 
-                                    style={[styles.deleteButton, { backgroundColor: colors.error + '20' }]}
-                                    disabled={isLoading}
-                                >
-                                    <Trash2 size={20 * SCALE} color={colors.error} />
-                                </TouchableOpacity>
-                            )}
-                            <TouchableOpacity 
-                                onPress={validateAndSave} 
-                                style={[styles.saveButton, { backgroundColor: colors.primary }]}
-                                disabled={isLoading}
-                            >
-                                <Check size={24 * SCALE} color="#fff" />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
+                    )}
+                    <TouchableOpacity 
+                        onPress={validateAndSave} 
+                        style={[styles.saveButton, { backgroundColor: colors.primary }]}
+                        disabled={isLoading}
+                    >
+                        <Check size={24 * SCALE} color="#fff" />
+                    </TouchableOpacity>
+                </View>
+            </View>
 
+            {/* Contenido principal scrolleable */}
+            <KeyboardAvoidingView 
+                style={styles.keyboardView}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+            >
+                <TouchableWithoutFeedback onPress={dismissKeyboard}>
                     <ScrollView 
+                        style={styles.scrollView}
                         contentContainerStyle={[
                             styles.scrollContainer,
-                            { paddingBottom: isKeyboardVisible ? keyboardHeight + 20 : 20 }
+                            { 
+                                paddingBottom: Math.max(20, keyboardHeight / 4) // Mejor manejo del padding
+                            }
                         ]}
                         keyboardShouldPersistTaps="handled"
-                        showsVerticalScrollIndicator={false}
+                        showsVerticalScrollIndicator={true}
+                        bounces={true}
+                        overScrollMode="always"
+                        automaticallyAdjustContentInsets={false}
+                        contentInsetAdjustmentBehavior="never"
                     >
                         {/* Información Básica */}
                         <View style={[styles.card, { backgroundColor: colors.surface, shadowColor: colors.text }]}>
@@ -907,7 +935,12 @@ const AddHabitScreen = ({ navigation, route }) => {
                                         <Text style={[styles.manageButtonText, { color: colors.primary, fontSize: 12 }]}>Gestionar</Text>
                                     </TouchableOpacity>
                                 </View>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.unitsScroll}>
+                                <ScrollView 
+                                    horizontal 
+                                    showsHorizontalScrollIndicator={false} 
+                                    style={styles.unitsScroll}
+                                    contentContainerStyle={styles.unitsScrollContent}
+                                >
                                     {units.map((unit) => {
                                         const isSelected = targetUnit === unit.descripcion;
                                         return (
@@ -978,7 +1011,7 @@ const AddHabitScreen = ({ navigation, route }) => {
                             </View>
                         </View>
 
-                        {/* Configuración de Recordatorio */}
+{/*                      
                         <View style={[styles.card, { backgroundColor: colors.surface, shadowColor: colors.text }]}>
                             <Text style={[styles.cardTitle, { color: colors.text }]}>Recordatorios</Text>
                             
@@ -1023,7 +1056,7 @@ const AddHabitScreen = ({ navigation, route }) => {
                                     }}
                                 />
                             )}
-                        </View>
+                        </View> */}
 
                         {/* Notas Adicionales */}
                         <View style={[styles.card, { backgroundColor: colors.surface, shadowColor: colors.text }]}>
@@ -1047,17 +1080,17 @@ const AddHabitScreen = ({ navigation, route }) => {
                             </View>
                         </View>
 
-                        {/* Espacio adicional para evitar que el teclado tape el contenido */}
-                        <View style={{ height: 40 * SCALE }} />
+                        {/* Espacio adicional para evitar que el contenido quede pegado al final */}
+                        <View style={{ height: 30 * SCALE }} />
                     </ScrollView>
+                </TouchableWithoutFeedback>
+            </KeyboardAvoidingView>
 
-                    {/* Modales de mantenimiento */}
-                    {renderMaintenanceModal('Categorías', categories, 'categories', showCategoryModal, setShowCategoryModal)}
-                    {renderMaintenanceModal('Frecuencias', frequencies, 'frequencies', showFrequencyModal, setShowFrequencyModal)}
-                    {renderMaintenanceModal('Unidades', units, 'units', showUnitModal, setShowUnitModal)}
-                </View>
-            </TouchableWithoutFeedback>
-        </KeyboardAvoidingView>
+            {/* Modales de mantenimiento */}
+            {renderMaintenanceModal('Categorías', categories, 'categories', showCategoryModal, setShowCategoryModal)}
+            {renderMaintenanceModal('Frecuencias', frequencies, 'frequencies', showFrequencyModal, setShowFrequencyModal)}
+            {renderMaintenanceModal('Unidades', units, 'units', showUnitModal, setShowUnitModal)}
+        </View>
     );
 };
 
@@ -1094,7 +1127,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 16 * SCALE,
         paddingTop: 50 * SCALE,
-        paddingBottom: 20 * SCALE
+        paddingBottom: 20 * SCALE,
+        zIndex: 1000, // Asegurar que el header esté por encima
     },
     backButton: {
         width: 40 * SCALE,
@@ -1127,9 +1161,20 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    
+    // Mejoras en el contenedor del scroll principal
+    keyboardView: {
+        flex: 1,
+    },
+    scrollView: {
+        flex: 1,
+        backgroundColor: 'transparent',
+    },
     scrollContainer: {
         padding: 16 * SCALE,
+        flexGrow: 1,
     },
+    
     card: {
         borderRadius: 16 * SCALE,
         padding: 16 * SCALE,
@@ -1235,6 +1280,9 @@ const styles = StyleSheet.create({
     unitsScroll: {
         marginBottom: 8 * SCALE,
     },
+    unitsScrollContent: {
+        paddingRight: 16 * SCALE, // Espacio adicional al final
+    },
     unitButton: {
         paddingHorizontal: 12 * SCALE,
         paddingVertical: 6 * SCALE,
@@ -1287,28 +1335,37 @@ const styles = StyleSheet.create({
         marginLeft: 8 * SCALE,
     },
     
-    // Estilos mejorados para modales más grandes y funcionales
+    // Estilos mejorados para modales con scroll optimizado
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20 * SCALE,
+        justifyContent: 'flex-end', // Cambiado para better UX en móviles
+    },
+    modalBackdrop: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+    },
+    modalKeyboardView: {
+        maxHeight: SCREEN_HEIGHT * 0.9, // Máximo 90% de la pantalla
+        minHeight: SCREEN_HEIGHT * 0.5, // Mínimo 50% de la pantalla
     },
     modalContainer: {
-        width: SCREEN_WIDTH * 0.92,
-        maxWidth: 500 * SCALE,
-        maxHeight: SCREEN_HEIGHT * 0.85,
-        minHeight: SCREEN_HEIGHT * 0.6,
-        borderRadius: 24 * SCALE,
+        borderTopLeftRadius: 24 * SCALE,
+        borderTopRightRadius: 24 * SCALE,
+        maxHeight: '100%',
+        minHeight: 300 * SCALE,
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
-            height: 8,
+            height: -4,
         },
         shadowOpacity: 0.3,
         shadowRadius: 12,
         elevation: 8,
+        flex: 1,
     },
     modalHeader: {
         flexDirection: 'row',
@@ -1318,6 +1375,7 @@ const styles = StyleSheet.create({
         paddingTop: 24 * SCALE,
         paddingBottom: 20 * SCALE,
         borderBottomWidth: 1.5,
+        // No flex, para que sea fixed
     },
     modalTitle: {
         fontSize: 22 * SCALE,
@@ -1331,10 +1389,21 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    
+    // Contenedor scrolleable del modal
+    modalScrollContainer: {
+        flex: 1,
+    },
+    modalScrollContent: {
+        flexGrow: 1,
+        paddingBottom: 24 * SCALE,
+    },
+    
     addNewSection: {
         paddingHorizontal: 24 * SCALE,
         paddingVertical: 20 * SCALE,
         borderBottomWidth: 1,
+        // No flex, sección fija
     },
     addNewTitle: {
         fontSize: 16 * SCALE,
@@ -1369,11 +1438,13 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 3,
     },
+    
+    // Lista de elementos con scroll mejorado
     itemsListContainer: {
         flex: 1,
         paddingHorizontal: 24 * SCALE,
         paddingTop: 16 * SCALE,
-        paddingBottom: 24 * SCALE,
+        minHeight: 200 * SCALE, // Altura mínima para el scroll
     },
     itemsListTitle: {
         fontSize: 16 * SCALE,
@@ -1385,29 +1456,35 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         paddingVertical: 40 * SCALE,
+        minHeight: 150 * SCALE,
     },
     emptyStateText: {
         fontSize: 16 * SCALE,
         textAlign: 'center',
+        fontWeight: '500',
+        marginBottom: 8 * SCALE,
+    },
+    emptyStateSubtext: {
+        fontSize: 14 * SCALE,
+        textAlign: 'center',
         fontStyle: 'italic',
     },
-    itemsList: {
+    
+    // Contenedor de items mejorado
+    itemsContainer: {
         flex: 1,
-        paddingHorizontal: 4 * SCALE,
-    },
-    itemsListContent: {
-        paddingBottom: 20 * SCALE,
     },
     itemRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 18 * SCALE,
+        paddingVertical: 16 * SCALE,
         paddingHorizontal: 16 * SCALE,
         borderBottomWidth: 1,
         borderRadius: 12 * SCALE,
         marginBottom: 4 * SCALE,
         marginHorizontal: 2 * SCALE,
+        minHeight: 60 * SCALE, // Altura mínima para mejor UX
     },
     itemInfo: {
         flex: 1,
@@ -1416,6 +1493,7 @@ const styles = StyleSheet.create({
     itemText: {
         fontSize: 16 * SCALE,
         fontWeight: '500',
+        lineHeight: 20 * SCALE,
     },
     itemActions: {
         flexDirection: 'row',
