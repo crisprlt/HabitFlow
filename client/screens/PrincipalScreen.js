@@ -64,8 +64,9 @@ import {
   MessageCircle
 } from 'lucide-react-native';
 import { useTheme } from './ThemeContext';
+import { useLanguage } from './LanguageContext'; // Importar el contexto de idioma
 import api from '../services/api';
-import * as SecureStore from 'expo-secure-store'; // ✅ Agregar import
+import * as SecureStore from 'expo-secure-store';
 
 const SCALE = 1.2;
 
@@ -111,6 +112,7 @@ const iconMap = {
 
 const PrincipalScreen = ({ navigation }) => {
   const { colors } = useTheme();
+  const { t, currentLanguage } = useLanguage(); // Usar el contexto de idioma
 
   // Estados principales
   const [habits, setHabits] = useState([]);
@@ -123,14 +125,14 @@ const PrincipalScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [newNote, setNewNote] = useState('');
-  const [userId, setUserId] = useState(null); // ✅ Estado para userId
+  const [userId, setUserId] = useState(null);
 
   // Estados para modal de edición de notas
   const [editingNote, setEditingNote] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editNoteText, setEditNoteText] = useState('');
 
-  // ✅ Obtener userId del SecureStore al cargar el componente
+  // Obtener userId del SecureStore al cargar el componente
   useEffect(() => {
     const getUserId = async () => {
       try {
@@ -142,7 +144,7 @@ const PrincipalScreen = ({ navigation }) => {
         } else {
           console.log('❌ No se encontró user_id en SecureStore');
           Alert.alert(
-            'Sesión expirada',
+            t('info'),
             'Por favor, inicia sesión nuevamente',
             [
               {
@@ -209,7 +211,7 @@ const PrincipalScreen = ({ navigation }) => {
     }
   };
 
-  // ✅ Cargar datos cuando se obtenga el userId y cuando la pantalla recibe foco
+  // Cargar datos cuando se obtenga el userId y cuando la pantalla recibe foco
   useFocusEffect(
     React.useCallback(() => {
       console.log('🔄 PrincipalScreen recibió foco - userId:', userId);
@@ -282,7 +284,7 @@ const PrincipalScreen = ({ navigation }) => {
       if (response.data.success) {
         setNotes(prev => [response.data.data.note, ...prev]);
         setNewNote('');
-        Alert.alert('¡Éxito!', 'Nota agregada correctamente');
+        Alert.alert(t('success'), 'Nota agregada correctamente');
       }
     } catch (error) {
       console.error('Error creando nota:', error);
@@ -351,9 +353,10 @@ const PrincipalScreen = ({ navigation }) => {
     return IconComponent;
   };
 
-  // Formatear fecha
+  // Formatear fecha según el idioma
   const formatTimestamp = (timestamp) => {
-    return new Date(timestamp).toLocaleString('es-ES', {
+    const locale = currentLanguage === 'es' ? 'es-ES' : 'en-US';
+    return new Date(timestamp).toLocaleString(locale, {
       day: '2-digit',
       month: '2-digit',
       hour: '2-digit',
@@ -361,14 +364,15 @@ const PrincipalScreen = ({ navigation }) => {
     });
   };
 
-  const today = new Date().toLocaleDateString('es-ES', {
+  // Formatear fecha de hoy según el idioma
+  const today = new Date().toLocaleDateString(currentLanguage === 'es' ? 'es-ES' : 'en-US', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric'
   });
 
-  // ✅ Mostrar loading mientras se obtiene el userId o se cargan los datos
+  // Mostrar loading mientras se obtiene el userId o se cargan los datos
   if (isLoading || !userId) {
     return (
       <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
@@ -413,7 +417,9 @@ const PrincipalScreen = ({ navigation }) => {
         {/* Progress */}
         <View style={[styles.progressCard, { backgroundColor: colors.cardCompleted }]}>
           <View style={styles.progressHeader}>
-            <Text style={[styles.progressTitle, { color: colors.text }]}>Progreso de Hoy</Text>
+            <Text style={[styles.progressTitle, { color: colors.text }]}>
+              {currentLanguage === 'es' ? 'Progreso de Hoy' : 'Today\'s Progress'}
+            </Text>
             <Text style={[styles.progressValue, { color: colors.primary }]}>
               {Math.round(stats.porcentaje_completado || 0)}%
             </Text>
@@ -428,25 +434,37 @@ const PrincipalScreen = ({ navigation }) => {
             ]} />
           </View>
           <Text style={[styles.progressText, { color: colors.textSecondary }]}>
-            {stats.habitos_completados || 0} de {stats.total_habitos || 0} hábitos completados
+            {stats.habitos_completados || 0} {currentLanguage === 'es' ? 'de' : 'of'} {stats.total_habitos || 0} {currentLanguage === 'es' ? 'hábitos completados' : 'habits completed'}
           </Text>
         </View>
 
         {/* Stats */}
         <View style={styles.statsContainer}>
-          <StatCard icon={Target} label="Total" value={`${stats.total_habitos || 0}`} colors={colors} />
-          <StatCard icon={Calendar} label="Completados" value={`${stats.habitos_completados || 0}`} colors={colors} />
+          <StatCard 
+            icon={Target} 
+            label={currentLanguage === 'es' ? 'Total' : 'Total'} 
+            value={`${stats.total_habitos || 0}`} 
+            colors={colors} 
+          />
+          <StatCard 
+            icon={Calendar} 
+            label={currentLanguage === 'es' ? 'Completados' : 'Completed'} 
+            value={`${stats.habitos_completados || 0}`} 
+            colors={colors} 
+          />
         </View>
 
         {/* Habits */}
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Hábitos</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          {currentLanguage === 'es' ? 'Hábitos' : 'Habits'}
+        </Text>
         {habits.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
-              No tienes hábitos aún
+              {currentLanguage === 'es' ? 'No tienes hábitos aún' : 'No habits yet'}
             </Text>
             <Text style={[styles.emptyStateSubtext, { color: colors.textTertiary }]}>
-              Agrega tu primer hábito para comenzar
+              {currentLanguage === 'es' ? 'Agrega tu primer hábito para comenzar' : 'Add your first habit to get started'}
             </Text>
           </View>
         ) : (
@@ -516,8 +534,6 @@ const PrincipalScreen = ({ navigation }) => {
                         <Edit3 size={14 * SCALE} color={colors.primary} />
                       </TouchableOpacity>
                     </View>
-
-                    {/* ❌ ELIMINADO: Barra de progreso para hábitos con target > 1 */}
                   </View>
                 </View>
               </View>
@@ -528,7 +544,9 @@ const PrincipalScreen = ({ navigation }) => {
         {/* Sección de Notas */}
         <View style={styles.notesSection}>
           <View style={styles.notesSectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Notas</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              {currentLanguage === 'es' ? 'Notas' : 'Notes'}
+            </Text>
             <PenTool size={18 * SCALE} color={colors.primary} />
           </View>
           
@@ -542,7 +560,7 @@ const PrincipalScreen = ({ navigation }) => {
               }]}
               value={newNote}
               onChangeText={setNewNote}
-              placeholder="Escribe una nota..."
+              placeholder={currentLanguage === 'es' ? 'Escribe una nota...' : 'Write a note...'}
               placeholderTextColor={colors.placeholder}
               multiline
               numberOfLines={2}
@@ -564,8 +582,12 @@ const PrincipalScreen = ({ navigation }) => {
           <View style={styles.notesContainer}>
             {notes.length === 0 ? (
               <View style={styles.emptyNotesContainer}>
-                <Text style={[styles.emptyNotesText, { color: colors.textSecondary }]}>No hay notas aún</Text>
-                <Text style={[styles.emptyNotesSubtext, { color: colors.textTertiary }]}>Agrega tu primera nota para empezar</Text>
+                <Text style={[styles.emptyNotesText, { color: colors.textSecondary }]}>
+                  {currentLanguage === 'es' ? 'No hay notas aún' : 'No notes yet'}
+                </Text>
+                <Text style={[styles.emptyNotesSubtext, { color: colors.textTertiary }]}>
+                  {currentLanguage === 'es' ? 'Agrega tu primera nota para empezar' : 'Add your first note to get started'}
+                </Text>
               </View>
             ) : (
               notes.map(note => (
@@ -617,7 +639,9 @@ const PrincipalScreen = ({ navigation }) => {
         >
           <View style={[styles.modalContent, { backgroundColor: colors.modalBackground }]}>
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Editar Nota</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                {currentLanguage === 'es' ? 'Editar Nota' : 'Edit Note'}
+              </Text>
               <TouchableOpacity onPress={cancelEdit}>
                 <X size={24 * SCALE} color={colors.textTertiary} />
               </TouchableOpacity>
@@ -631,7 +655,7 @@ const PrincipalScreen = ({ navigation }) => {
               }]}
               value={editNoteText}
               onChangeText={setEditNoteText}
-              placeholder="Edita tu nota..."
+              placeholder={currentLanguage === 'es' ? 'Edita tu nota...' : 'Edit your note...'}
               placeholderTextColor={colors.placeholder}
               multiline
               numberOfLines={6}
@@ -643,14 +667,18 @@ const PrincipalScreen = ({ navigation }) => {
                 style={[styles.cancelButton, { backgroundColor: colors.surfaceVariant }]}
                 onPress={cancelEdit}
               >
-                <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>Cancelar</Text>
+                <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>
+                  {t('cancel')}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[styles.saveButton, { backgroundColor: colors.primary }]}
                 onPress={saveEditedNote}
               >
                 <Check size={18 * SCALE} color="#fff" />
-                <Text style={styles.saveButtonText}>Guardar</Text>
+                <Text style={styles.saveButtonText}>
+                  {currentLanguage === 'es' ? 'Guardar' : 'Save'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -662,22 +690,27 @@ const PrincipalScreen = ({ navigation }) => {
         backgroundColor: colors.surface,
         borderTopColor: colors.border
       }]}>
-        <NavItem icon={Target} label="Hábitos" active colors={colors} />
+        <NavItem 
+          icon={Target} 
+          label={currentLanguage === 'es' ? 'Hábitos' : 'Habits'} 
+          active 
+          colors={colors} 
+        />
         <NavItem
           icon={Calendar}
-          label="Calendario"
-          onPress={() => navigation.navigate('HabitCalendar')} // ✅ Ya no necesita pasar userId
+          label={currentLanguage === 'es' ? 'Calendario' : 'Calendar'}
+          onPress={() => navigation.navigate('HabitCalendar')}
           colors={colors}
         />
         <NavItem 
           icon={Clock} 
-          label="To do"
+          label={currentLanguage === 'es' ? 'Tareas' : 'To Do'}
           onPress={() => navigation.navigate('Todo')}
           colors={colors}
         />
         <NavItem 
           icon={User} 
-          label="Perfil"
+          label={currentLanguage === 'es' ? 'Perfil' : 'Profile'}
           onPress={() => navigation.navigate('Perfil')}
           colors={colors}
         />
@@ -877,8 +910,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 14 * SCALE,
   },
-  // ❌ ELIMINADOS: Estilos de la barra de progreso de hábitos
-  // habitProgressBarBackground y habitProgressBarFill ya no se usan
   notesSection: {
     marginTop: 20 * SCALE,
   },

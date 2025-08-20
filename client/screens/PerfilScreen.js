@@ -30,9 +30,11 @@ import {
   Moon,
   Sun,
   Smartphone,
-  X
+  X,
+  Globe
 } from 'lucide-react-native';
 import { useTheme } from './ThemeContext';
+import { useLanguage } from './LanguageContext'; // Importar el contexto de idioma
 import api from '../services/api';
 import * as SecureStore from 'expo-secure-store';
 
@@ -41,7 +43,9 @@ const { width } = Dimensions.get('window');
 
 const PerfilScreen = ({ navigation }) => {
   const { themeMode, colors, setTheme } = useTheme();
+  const { languageMode, currentLanguage, setLanguage, t } = useLanguage(); // Usar el contexto de idioma
   const [showThemeModal, setShowThemeModal] = useState(false);
+  const [showLanguageModal, setShowLanguageModal] = useState(false); // Estado para modal de idioma
   const [showEditModal, setShowEditModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -75,7 +79,7 @@ const PerfilScreen = ({ navigation }) => {
         } else {
           console.log('❌ No se encontró user_id en SecureStore');
           Alert.alert(
-            'Sesión expirada',
+            t('info'), // Usar traducción
             'Por favor, inicia sesión nuevamente',
             [
               {
@@ -123,7 +127,7 @@ const PerfilScreen = ({ navigation }) => {
           nombre: user.nombre,
           apellido: user.apellido,
           correo: user.correo,
-          fechaRegistro: new Date().toLocaleDateString('es-ES', {
+          fechaRegistro: new Date().toLocaleDateString(currentLanguage === 'es' ? 'es-ES' : 'en-US', {
             year: 'numeric',
             month: 'long',
             day: 'numeric'
@@ -150,15 +154,15 @@ const PerfilScreen = ({ navigation }) => {
 
   const handleLogout = () => {
     Alert.alert(
-      'Cerrar Sesión',
-      '¿Estás seguro que deseas cerrar sesión?',
+      t('logout'), // Usar traducción
+      t('logoutConfirm'), // Usar traducción
       [
         {
-          text: 'Cancelar',
+          text: t('cancel'), // Usar traducción
           style: 'cancel'
         },
         {
-          text: 'Cerrar Sesión',
+          text: t('logout'), // Usar traducción
           style: 'destructive',
           onPress: async () => {
             try {
@@ -220,7 +224,7 @@ const PerfilScreen = ({ navigation }) => {
         await SecureStore.setItemAsync('user_name', `${updatedUser.nombre} ${updatedUser.apellido}`);
 
         setShowEditModal(false);
-        Alert.alert('Éxito', 'Perfil actualizado correctamente');
+        Alert.alert(t('success'), t('profileUpdated')); // Usar traducción
       }
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -249,14 +253,36 @@ const PerfilScreen = ({ navigation }) => {
     setShowThemeModal(false);
   };
 
+  // Función para guardar la preferencia de idioma
+  const saveLanguagePreference = async (language) => {
+    try {
+      await setLanguage(language);
+      setShowLanguageModal(false);
+      Alert.alert(t('success'), t('languageUpdated')); // Usar traducción
+    } catch (error) {
+      console.error('Error saving language preference:', error);
+      Alert.alert('Error', 'No se pudo cambiar el idioma');
+    }
+  };
+
   const getThemeIcon = () => {
     if (themeMode === 'system') return Smartphone;
     return themeMode === 'dark' ? Moon : Sun;
   };
 
   const getThemeText = () => {
-    if (themeMode === 'system') return 'Seguir sistema';
-    return themeMode === 'dark' ? 'Modo oscuro' : 'Modo claro';
+    if (themeMode === 'system') return t('followSystem');
+    return themeMode === 'dark' ? t('darkMode') : t('lightMode');
+  };
+
+  // Funciones para obtener el icono y texto del idioma
+  const getLanguageIcon = () => {
+    return Globe; // Siempre usamos el icono de globo
+  };
+
+  const getLanguageText = () => {
+    if (languageMode === 'system') return t('followSystemLang');
+    return languageMode === 'es' ? t('spanish') : t('english');
   };
 
   const StatCard = ({ icon: Icon, title, value, color = '#968ce4' }) => (
@@ -323,6 +349,34 @@ const PerfilScreen = ({ navigation }) => {
     </TouchableOpacity>
   );
 
+  // Componente para las opciones de idioma (similar a ThemeOption)
+  const LanguageOption = ({ icon: Icon, title, subtitle, isSelected, onPress }) => (
+    <TouchableOpacity 
+      style={[
+        styles.themeOption, 
+        { 
+          backgroundColor: colors.card,
+          borderColor: isSelected ? colors.primary : colors.border,
+          borderWidth: isSelected ? 2 : 1
+        }
+      ]} 
+      onPress={onPress}
+    >
+      <View style={styles.themeOptionLeft}>
+        <View style={[styles.themeIcon, { backgroundColor: colors.surfaceVariant }]}>
+          <Icon size={20} color={colors.primary} />
+        </View>
+        <View>
+          <Text style={[styles.themeTitle, { color: colors.text }]}>{title}</Text>
+          <Text style={[styles.themeSubtitle, { color: colors.textSecondary }]}>{subtitle}</Text>
+        </View>
+      </View>
+      {isSelected && (
+        <View style={[styles.selectedIndicator, { backgroundColor: colors.primary }]} />
+      )}
+    </TouchableOpacity>
+  );
+
   if (loading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
@@ -345,7 +399,7 @@ const PerfilScreen = ({ navigation }) => {
         >
           <ArrowLeft size={20 * SCALE} color="#968ce4" />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.text }]}>Mi Perfil</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{t('myProfile')}</Text>
         <TouchableOpacity 
           onPress={() => setShowEditModal(true)}
           style={[styles.editButton, { backgroundColor: colors.cardCompleted }]}
@@ -382,19 +436,19 @@ const PerfilScreen = ({ navigation }) => {
 
         {/* Menu Sections */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Cuenta</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('account')}</Text>
           <View style={[styles.menuContainer, { backgroundColor: colors.surface }]}>
             <MenuItem
               icon={User}
-              title="Información Personal"
-              subtitle="Edita tu perfil y datos"
+              title={t('personalInfo')}
+              subtitle={t('editProfileData')}
               onPress={() => setShowEditModal(true)}
               color="#968ce4"
             />
             <MenuItem
               icon={Shield}
-              title="Cambiar Contraseña"
-              subtitle="Actualiza tu contraseña"
+              title={t('changePassword')}
+              subtitle={t('updatePassword')}
               onPress={() => navigation.navigate('ChangePassword')}
               color="#4ecdc4"
             />
@@ -402,14 +456,22 @@ const PerfilScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Preferencias</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('preferences')}</Text>
           <View style={[styles.menuContainer, { backgroundColor: colors.surface }]}>
             <MenuItem
               icon={getThemeIcon()}
-              title="Tema de la aplicación"
+              title={t('appTheme')}
               subtitle={getThemeText()}
               onPress={() => setShowThemeModal(true)}
               color={themeMode === 'system' ? "#6c5ce7" : (themeMode === 'dark' ? "#ffd93d" : "#ff9f43")}
+            />
+            {/* Nuevo item para cambio de idioma */}
+            <MenuItem
+              icon={getLanguageIcon()}
+              title={t('appLanguage')}
+              subtitle={getLanguageText()}
+              onPress={() => setShowLanguageModal(true)}
+              color="#74b9ff"
             />
           </View>
         </View>
@@ -419,7 +481,7 @@ const PerfilScreen = ({ navigation }) => {
           <View style={[styles.menuContainer, { backgroundColor: colors.surface }]}>
             <MenuItem
               icon={LogOut}
-              title="Cerrar Sesión"
+              title={t('logout')}
               onPress={handleLogout}
               showArrow={false}
               color="#ff6b6b"
@@ -437,7 +499,7 @@ const PerfilScreen = ({ navigation }) => {
         <View style={[styles.modalOverlay, { backgroundColor: colors.modalOverlay }]}>
           <View style={[styles.modalContent, { backgroundColor: colors.modalBackground }]}>
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Seleccionar Tema</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{t('selectTheme')}</Text>
               <TouchableOpacity onPress={() => setShowThemeModal(false)}>
                 <X size={24 * SCALE} color={colors.textTertiary} />
               </TouchableOpacity>
@@ -446,26 +508,70 @@ const PerfilScreen = ({ navigation }) => {
             <View style={styles.themeModalBody}>
               <ThemeOption
                 icon={Smartphone}
-                title="Seguir sistema"
-                subtitle="Usar el tema del dispositivo"
+                title={t('followSystem')}
+                subtitle={t('useDeviceTheme')}
                 isSelected={themeMode === 'system'}
                 onPress={() => saveThemePreference('system')}
               />
               
               <ThemeOption
                 icon={Sun}
-                title="Modo claro"
-                subtitle="Usar siempre tema claro"
+                title={t('lightMode')}
+                subtitle={t('alwaysLight')}
                 isSelected={themeMode === 'light'}
                 onPress={() => saveThemePreference('light')}
               />
               
               <ThemeOption
                 icon={Moon}
-                title="Modo oscuro"
-                subtitle="Usar siempre tema oscuro"
+                title={t('darkMode')}
+                subtitle={t('alwaysDark')}
                 isSelected={themeMode === 'dark'}
                 onPress={() => saveThemePreference('dark')}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de selección de idioma */}
+      <Modal
+        visible={showLanguageModal}
+        transparent={true}
+        animationType="slide"
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: colors.modalOverlay }]}>
+          <View style={[styles.modalContent, { backgroundColor: colors.modalBackground }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{t('selectLanguage')}</Text>
+              <TouchableOpacity onPress={() => setShowLanguageModal(false)}>
+                <X size={24 * SCALE} color={colors.textTertiary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.themeModalBody}>
+              <LanguageOption
+                icon={Smartphone}
+                title={t('followSystemLang')}
+                subtitle={t('useDeviceLanguage')}
+                isSelected={languageMode === 'system'}
+                onPress={() => saveLanguagePreference('system')}
+              />
+              
+              <LanguageOption
+                icon={Globe}
+                title={t('spanish')}
+                subtitle={t('alwaysSpanish')}
+                isSelected={languageMode === 'es'}
+                onPress={() => saveLanguagePreference('es')}
+              />
+              
+              <LanguageOption
+                icon={Globe}
+                title={t('english')}
+                subtitle={t('alwaysEnglish')}
+                isSelected={languageMode === 'en'}
+                onPress={() => saveLanguagePreference('en')}
               />
             </View>
           </View>
@@ -481,14 +587,14 @@ const PerfilScreen = ({ navigation }) => {
         <View style={[styles.modalOverlay, { backgroundColor: colors.modalOverlay }]}>
           <View style={[styles.modalContent, { backgroundColor: colors.modalBackground }]}>
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Editar Perfil</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{t('editProfile')}</Text>
               <TouchableOpacity onPress={handleCancelEdit}>
-                <Text style={[styles.cancelText, { color: colors.primary }]}>Cancelar</Text>
+                <Text style={[styles.cancelText, { color: colors.primary }]}>{t('cancel')}</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.modalBody}>
-              <Text style={[styles.inputLabel, { color: colors.text }]}>Nombre</Text>
+              <Text style={[styles.inputLabel, { color: colors.text }]}>{t('name')}</Text>
               <TextInput
                 style={[styles.modalInput, { 
                   borderColor: colors.borderLight,
@@ -497,11 +603,11 @@ const PerfilScreen = ({ navigation }) => {
                 }]}
                 value={editData.nombre}
                 onChangeText={(value) => setEditData(prev => ({ ...prev, nombre: value }))}
-                placeholder="Nombre"
+                placeholder={t('name')}
                 placeholderTextColor={colors.placeholder}
               />
 
-              <Text style={[styles.inputLabel, { color: colors.text }]}>Apellido</Text>
+              <Text style={[styles.inputLabel, { color: colors.text }]}>{t('lastName')}</Text>
               <TextInput
                 style={[styles.modalInput, { 
                   borderColor: colors.borderLight,
@@ -510,11 +616,11 @@ const PerfilScreen = ({ navigation }) => {
                 }]}
                 value={editData.apellido}
                 onChangeText={(value) => setEditData(prev => ({ ...prev, apellido: value }))}
-                placeholder="Apellido"
+                placeholder={t('lastName')}
                 placeholderTextColor={colors.placeholder}
               />
 
-              <Text style={[styles.inputLabel, { color: colors.text }]}>Email</Text>
+              <Text style={[styles.inputLabel, { color: colors.text }]}>{t('email')}</Text>
               <TextInput
                 style={[styles.modalInput, { 
                   borderColor: colors.borderLight,
@@ -523,7 +629,7 @@ const PerfilScreen = ({ navigation }) => {
                 }]}
                 value={editData.email}
                 onChangeText={(value) => setEditData(prev => ({ ...prev, email: value }))}
-                placeholder="Email"
+                placeholder={t('email')}
                 placeholderTextColor={colors.placeholder}
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -544,7 +650,7 @@ const PerfilScreen = ({ navigation }) => {
               {saving ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.saveButtonText}>Guardar Cambios</Text>
+                <Text style={styles.saveButtonText}>{t('saveChanges')}</Text>
               )}
             </TouchableOpacity>
           </View>
