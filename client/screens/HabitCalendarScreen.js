@@ -20,15 +20,17 @@ import {
     TrendingUp
 } from 'lucide-react-native';
 import { useTheme } from './ThemeContext';
+import { useLanguage } from './LanguageContext'; // ✅ Importar useLanguage
 import api from '../services/api';
-import * as SecureStore from 'expo-secure-store'; // ✅ Agregar import
+import * as SecureStore from 'expo-secure-store';
 
 const SCALE = 1.2;
 const { width } = Dimensions.get('window');
 
 const HabitCalendarScreen = ({ navigation, route }) => {
     const { colors } = useTheme();
-    const { habit } = route.params || {}; // ✅ Solo obtener habit, no userId
+    const { t, currentLanguage } = useLanguage(); // ✅ Usar contexto de idioma
+    const { habit } = route.params || {};
     
     const [viewMode, setViewMode] = useState('semanal');
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -39,9 +41,73 @@ const HabitCalendarScreen = ({ navigation, route }) => {
     const [streak, setStreak] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [userId, setUserId] = useState(null); // ✅ Estado para userId
+    const [userId, setUserId] = useState(null);
 
-    // ✅ Obtener userId del SecureStore al cargar el componente
+    // ✅ Traducciones específicas para el calendario
+    const calendarTranslations = {
+        es: {
+            calendar: 'Calendario',
+            loadingHabits: 'Cargando hábitos...',
+            noHabitsCreated: 'No tienes hábitos creados',
+            back: 'Volver',
+            retry: 'Reintentar',
+            weekly: 'Semanal',
+            monthly: 'Mensual',
+            periodStats: 'Estadísticas del período',
+            completedDays: 'Días completados',
+            percentage: 'Porcentaje',
+            currentStreak: 'Racha actual',
+            dayNames: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'],
+            months: [
+                'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+            ],
+            errors: {
+                userSession: 'No se encontró sesión de usuario',
+                userInfo: 'Error al obtener información de usuario',
+                loadingHabits: 'Error de conexión al cargar hábitos',
+                loadingData: 'Error al cargar datos del hábito'
+            }
+    },
+        en: {
+            calendar: 'Calendar',
+            loadingHabits: 'Loading habits...',
+            noHabitsCreated: 'You have no habits created',
+            back: 'Back',
+            retry: 'Retry',
+            weekly: 'Weekly',
+            monthly: 'Monthly',
+            periodStats: 'Period Statistics',
+            completedDays: 'Completed days',
+            percentage: 'Percentage',
+            currentStreak: 'Current streak',
+            dayNames: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+            months: [
+                'january', 'february', 'march', 'april', 'may', 'june',
+                'july', 'august', 'september', 'october', 'november', 'december'
+            ],
+            errors: {
+                userSession: 'No user session found',
+                userInfo: 'Error getting user information',
+                loadingHabits: 'Connection error loading habits',
+                loadingData: 'Error loading habit data'
+            }
+        }
+    };
+
+    // ✅ Función helper para obtener traducciones del calendario
+    const tc = (key) => {
+        const keys = key.split('.');
+        let value = calendarTranslations[currentLanguage];
+        
+        for (const k of keys) {
+            value = value?.[k];
+        }
+        
+        return value || calendarTranslations['en'][key] || key;
+    };
+
+    // Obtener userId del SecureStore al cargar el componente
     useEffect(() => {
         const getUserId = async () => {
             try {
@@ -52,18 +118,18 @@ const HabitCalendarScreen = ({ navigation, route }) => {
                     setUserId(storedUserId);
                 } else {
                     console.log('❌ No se encontró user_id en SecureStore');
-                    setError('No se encontró sesión de usuario');
+                    setError(tc('errors.userSession'));
                     setLoading(false);
                 }
             } catch (error) {
                 console.error('❌ Error obteniendo userId del storage:', error);
-                setError('Error al obtener información de usuario');
+                setError(tc('errors.userInfo'));
                 setLoading(false);
             }
         };
 
         getUserId();
-    }, []);
+    }, [currentLanguage]); // ✅ Agregar currentLanguage como dependencia
 
     // Cargar hábitos del usuario cuando se obtenga el userId
     useEffect(() => {
@@ -95,7 +161,7 @@ const HabitCalendarScreen = ({ navigation, route }) => {
                 // Normalizar los datos
                 const normalizedHabits = response.data.data.map(habit => ({
                     ...habit,
-                    target: parseInt(habit.target) || 1 // Convertir target a número
+                    target: parseInt(habit.target) || 1
                 }));
                 
                 console.log('Hábitos normalizados:', normalizedHabits);
@@ -108,11 +174,11 @@ const HabitCalendarScreen = ({ navigation, route }) => {
                 }
             } else {
                 console.log('Error en respuesta:', response.data);
-                setError('Error al cargar hábitos');
+                setError(tc('errors.loadingHabits'));
             }
         } catch (err) {
             console.error('Error cargando hábitos:', err);
-            setError('Error de conexión al cargar hábitos');
+            setError(tc('errors.loadingHabits'));
         } finally {
             setLoading(false);
         }
@@ -174,7 +240,7 @@ const HabitCalendarScreen = ({ navigation, route }) => {
 
         } catch (err) {
             console.error('Error cargando datos del hábito:', err);
-            setError('Error al cargar datos del hábito');
+            setError(tc('errors.loadingData'));
         } finally {
             setLoading(false);
         }
@@ -266,6 +332,7 @@ const HabitCalendarScreen = ({ navigation, route }) => {
         return colors.error + '20';
     };
 
+    // ✅ Función para formatear período con soporte de idiomas
     const formatPeriod = () => {
         if (viewMode === 'semanal') {
             const days = getDaysInWeek();
@@ -273,12 +340,24 @@ const HabitCalendarScreen = ({ navigation, route }) => {
             const end = days[6];
             
             if (start.getMonth() === end.getMonth()) {
-                return `${start.getDate()}-${end.getDate()} ${start.toLocaleDateString('es', { month: 'long', year: 'numeric' })}`;
+                const monthName = tc(`months.${start.getMonth()}`);
+                return `${start.getDate()}-${end.getDate()} ${monthName} ${start.getFullYear()}`;
             } else {
-                return `${start.toLocaleDateString('es', { day: 'numeric', month: 'short' })} - ${end.toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+                const startMonth = tc(`months.${start.getMonth()}`);
+                const endMonth = tc(`months.${end.getMonth()}`);
+                if (currentLanguage === 'es') {
+                    return `${start.getDate()} ${startMonth} - ${end.getDate()} ${endMonth} ${end.getFullYear()}`;
+                } else {
+                    return `${startMonth} ${start.getDate()} - ${endMonth} ${end.getDate()}, ${end.getFullYear()}`;
+                }
             }
         } else {
-            return currentDate.toLocaleDateString('es', { month: 'long', year: 'numeric' });
+            const monthName = tc(`months.${currentDate.getMonth()}`);
+            if (currentLanguage === 'es') {
+                return `${monthName} ${currentDate.getFullYear()}`;
+            } else {
+                return `${monthName} ${currentDate.getFullYear()}`;
+            }
         }
     };
 
@@ -291,7 +370,7 @@ const HabitCalendarScreen = ({ navigation, route }) => {
 
     const renderWeeklyCalendar = () => {
         const days = getDaysInWeek();
-        const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+        const dayNames = tc('dayNames'); // ✅ Usar nombres de días traducidos
         
         return (
             <View style={styles.weeklyContainer}>
@@ -345,7 +424,7 @@ const HabitCalendarScreen = ({ navigation, route }) => {
 
     const renderMonthlyCalendar = () => {
         const days = getDaysInMonth();
-        const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+        const dayNames = tc('dayNames'); // ✅ Usar nombres de días traducidos
         const weeks = [];
         
         for (let i = 0; i < days.length; i += 7) {
@@ -405,7 +484,7 @@ const HabitCalendarScreen = ({ navigation, route }) => {
         return (
             <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
                 <ActivityIndicator size="large" color={colors.primary} />
-                <Text style={[styles.loadingText, { color: colors.text }]}>Cargando hábitos...</Text>
+                <Text style={[styles.loadingText, { color: colors.text }]}>{tc('loadingHabits')}</Text>
             </View>
         );
     }
@@ -418,7 +497,7 @@ const HabitCalendarScreen = ({ navigation, route }) => {
                     style={[styles.retryButton, { backgroundColor: colors.primary }]}
                     onPress={loadUserHabits}
                 >
-                    <Text style={styles.retryButtonText}>Reintentar</Text>
+                    <Text style={styles.retryButtonText}>{tc('retry')}</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -428,13 +507,13 @@ const HabitCalendarScreen = ({ navigation, route }) => {
         return (
             <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
                 <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                    No tienes hábitos creados
+                    {tc('noHabitsCreated')}
                 </Text>
                 <TouchableOpacity
                     style={[styles.createButton, { backgroundColor: colors.primary }]}
-                    onPress={() => navigation.goBack()} // ✅ Cambiar a goBack en lugar de navigate
+                    onPress={() => navigation.goBack()}
                 >
-                    <Text style={styles.createButtonText}>Volver</Text>
+                    <Text style={styles.createButtonText}>{tc('back')}</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -450,7 +529,7 @@ const HabitCalendarScreen = ({ navigation, route }) => {
                 >
                     <ArrowLeft size={24 * SCALE} color={colors.primary} />
                 </TouchableOpacity>
-                <Text style={[styles.title, { color: colors.text }]}>Calendario</Text>
+                <Text style={[styles.title, { color: colors.text }]}>{tc('calendar')}</Text>
                 <View style={styles.placeholder} />
             </View>
 
@@ -497,7 +576,7 @@ const HabitCalendarScreen = ({ navigation, route }) => {
                                         { color: colors.textSecondary },
                                         viewMode === 'semanal' && { color: '#fff', fontWeight: '500' }
                                     ]}>
-                                        Semanal
+                                        {tc('weekly')}
                                     </Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
@@ -512,7 +591,7 @@ const HabitCalendarScreen = ({ navigation, route }) => {
                                         { color: colors.textSecondary },
                                         viewMode === 'mensual' && { color: '#fff', fontWeight: '500' }
                                     ]}>
-                                        Mensual
+                                        {tc('monthly')}
                                     </Text>
                                 </TouchableOpacity>
                             </View>
@@ -559,7 +638,7 @@ const HabitCalendarScreen = ({ navigation, route }) => {
                             shadowColor: colors.text 
                         }]}>
                             <Text style={[styles.statsTitle, { color: colors.text }]}>
-                                Estadísticas del período
+                                {tc('periodStats')}
                             </Text>
                             {loading ? (
                                 <View style={styles.statsLoading}>
@@ -573,7 +652,7 @@ const HabitCalendarScreen = ({ navigation, route }) => {
                                             {stats?.diasCompletados || 0}
                                         </Text>
                                         <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                                            Días completados
+                                            {tc('completedDays')}
                                         </Text>
                                     </View>
                                     <View style={[styles.statCard, { backgroundColor: colors.surfaceVariant }]}>
@@ -582,7 +661,7 @@ const HabitCalendarScreen = ({ navigation, route }) => {
                                             {stats?.porcentaje || 0}%
                                         </Text>
                                         <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                                            Porcentaje
+                                            {tc('percentage')}
                                         </Text>
                                     </View>
                                     <View style={[styles.statCard, { backgroundColor: colors.surfaceVariant }]}>
@@ -591,7 +670,7 @@ const HabitCalendarScreen = ({ navigation, route }) => {
                                             {streak}
                                         </Text>
                                         <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                                            Racha actual
+                                            {tc('currentStreak')}
                                         </Text>
                                     </View>
                                 </View>

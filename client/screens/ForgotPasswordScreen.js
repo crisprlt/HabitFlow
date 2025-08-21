@@ -20,18 +20,108 @@ import {
   RefreshCw,
   Info
 } from 'lucide-react-native';
-import { useTheme } from './ThemeContext'; // ✅ Importar el hook del contexto
-import api from '../services/api'; // ✅ Importar el API configurado
+import { useTheme } from './ThemeContext';
+import { useLanguage } from './LanguageContext'; // ✅ Importar useLanguage
+import api from '../services/api';
 
 const SCALE = 1.0;
 
 const ForgotPasswordScreen = ({ navigation }) => {
-  const { colors } = useTheme(); // ✅ Usar el contexto de tema
+  const { colors } = useTheme();
+  const { t, currentLanguage } = useLanguage(); // ✅ Usar contexto de idioma
   
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [countdown, setCountdown] = useState(0);
+
+  // ✅ Traducciones específicas para Forgot Password
+  const forgotPasswordTranslations = {
+    es: {
+      forgotPassword: '¿Olvidaste tu contraseña?',
+      forgotPasswordDescription: 'No te preocupes, ingresa tu correo electrónico y te enviaremos un código para restablecer tu contraseña.',
+      email: 'Correo electrónico',
+      emailPlaceholder: 'ejemplo@correo.com',
+      enterEmail: 'Por favor ingresa tu correo electrónico',
+      enterValidEmail: 'Por favor ingresa un correo electrónico válido',
+      validEmail: 'Correo electrónico válido',
+      sendCode: 'Enviar código',
+      sending: 'Enviando...',
+      codeSent: '¡Código enviado!',
+      codeSentMessage: 'Hemos enviado un código de recuperación a',
+      checkInboxSpam: 'Revisa tu bandeja de entrada y spam.',
+      verifyCode: 'Verificar código',
+      resendCode: 'Reenviar código',
+      resendIn: 'Reenviar en',
+      seconds: 's',
+      backToLogin: 'Volver al inicio de sesión',
+      codeExpires: 'El código expira en 15 minutos',
+      tips: '💡 Consejos:',
+      tipCheckEmail: '• Verifica que el correo esté escrito correctamente',
+      tipCheckSpam: '• Revisa tu bandeja de spam si no recibes el código',
+      tipExpiration: '• El código expira en 15 minutos',
+      codeSentTitle: '¡Código enviado!',
+      codeSentTo: 'Hemos enviado un código de 6 dígitos a:',
+      codeSentSubtext: 'Revisa tu bandeja de entrada y spam. El código expira en 15 minutos.',
+      error: 'Error',
+      connectionError: 'Error de conexión',
+      connectionErrorMessage: 'No se pudo conectar al servidor. Verifica tu conexión a internet.',
+      unexpectedError: 'Ocurrió un error inesperado. Inténtalo de nuevo.',
+      serverError: 'Error del servidor',
+      codeResent: '¡Código reenviado!',
+      codeResentMessage: 'Hemos enviado un nuevo código a tu correo.',
+      couldNotSend: 'No se pudo enviar el código. Inténtalo de nuevo.',
+      couldNotResend: 'No se pudo reenviar el código. Inténtalo de nuevo.'
+    },
+    en: {
+      forgotPassword: 'Forgot your password?',
+      forgotPasswordDescription: 'Don\'t worry, enter your email address and we\'ll send you a code to reset your password.',
+      email: 'Email address',
+      emailPlaceholder: 'example@email.com',
+      enterEmail: 'Please enter your email address',
+      enterValidEmail: 'Please enter a valid email address',
+      validEmail: 'Valid email address',
+      sendCode: 'Send code',
+      sending: 'Sending...',
+      codeSent: 'Code sent!',
+      codeSentMessage: 'We have sent a recovery code to',
+      checkInboxSpam: 'Check your inbox and spam folder.',
+      verifyCode: 'Verify code',
+      resendCode: 'Resend code',
+      resendIn: 'Resend in',
+      seconds: 's',
+      backToLogin: 'Back to login',
+      codeExpires: 'Code expires in 15 minutes',
+      tips: '💡 Tips:',
+      tipCheckEmail: '• Check that the email is spelled correctly',
+      tipCheckSpam: '• Check your spam folder if you don\'t receive the code',
+      tipExpiration: '• Code expires in 15 minutes',
+      codeSentTitle: 'Code sent!',
+      codeSentTo: 'We have sent a 6-digit code to:',
+      codeSentSubtext: 'Check your inbox and spam folder. Code expires in 15 minutes.',
+      error: 'Error',
+      connectionError: 'Connection error',
+      connectionErrorMessage: 'Could not connect to server. Check your internet connection.',
+      unexpectedError: 'An unexpected error occurred. Please try again.',
+      serverError: 'Server error',
+      codeResent: 'Code resent!',
+      codeResentMessage: 'We have sent a new code to your email.',
+      couldNotSend: 'Could not send code. Please try again.',
+      couldNotResend: 'Could not resend code. Please try again.'
+    }
+  };
+
+  // ✅ Función helper para obtener traducciones de forgot password
+  const tf = (key) => {
+    const keys = key.split('.');
+    let value = forgotPasswordTranslations[currentLanguage];
+    
+    for (const k of keys) {
+      value = value?.[k];
+    }
+    
+    return value || forgotPasswordTranslations['en'][key] || key;
+  };
 
   // Validación de email
   const validateEmail = (email) => {
@@ -44,12 +134,12 @@ const ForgotPasswordScreen = ({ navigation }) => {
   // Función para enviar código de recuperación
   const handleSendResetCode = async () => {
     if (!email.trim()) {
-      Alert.alert('Error', 'Por favor ingresa tu correo electrónico');
+      Alert.alert(tf('error'), tf('enterEmail'));
       return;
     }
 
     if (!isValidEmail) {
-      Alert.alert('Error', 'Por favor ingresa un correo electrónico válido');
+      Alert.alert(tf('error'), tf('enterValidEmail'));
       return;
     }
 
@@ -69,14 +159,14 @@ const ForgotPasswordScreen = ({ navigation }) => {
         startCountdown();
 
         Alert.alert(
-          '¡Código enviado!',
-          response.data.message || `Hemos enviado un código de recuperación a ${email}. Revisa tu bandeja de entrada y spam.`,
+          tf('codeSent'),
+          response.data.message || `${tf('codeSentMessage')} ${email}. ${tf('checkInboxSpam')}`,
           [{ text: 'OK' }]
         );
       } else {
         Alert.alert(
-          'Error', 
-          response.data.message || 'No se pudo enviar el código. Inténtalo de nuevo.'
+          tf('error'), 
+          response.data.message || tf('couldNotSend')
         );
       }
 
@@ -86,17 +176,17 @@ const ForgotPasswordScreen = ({ navigation }) => {
       // Manejar diferentes tipos de errores
       if (error.response) {
         // El servidor respondió con un error
-        const errorMessage = error.response.data?.message || 'Error del servidor';
-        Alert.alert('Error', errorMessage);
+        const errorMessage = error.response.data?.message || tf('serverError');
+        Alert.alert(tf('error'), errorMessage);
       } else if (error.request) {
         // No se pudo conectar al servidor
         Alert.alert(
-          'Error de conexión', 
-          'No se pudo conectar al servidor. Verifica tu conexión a internet.'
+          tf('connectionError'), 
+          tf('connectionErrorMessage')
         );
       } else {
         // Otro tipo de error
-        Alert.alert('Error', 'Ocurrió un error inesperado. Inténtalo de nuevo.');
+        Alert.alert(tf('error'), tf('unexpectedError'));
       }
     } finally {
       setIsLoading(false);
@@ -119,13 +209,13 @@ const ForgotPasswordScreen = ({ navigation }) => {
       if (response.data.success) {
         startCountdown();
         Alert.alert(
-          '¡Código reenviado!', 
-          response.data.message || 'Hemos enviado un nuevo código a tu correo.'
+          tf('codeResent'), 
+          response.data.message || tf('codeResentMessage')
         );
       } else {
         Alert.alert(
-          'Error', 
-          response.data.message || 'No se pudo reenviar el código. Inténtalo de nuevo.'
+          tf('error'), 
+          response.data.message || tf('couldNotResend')
         );
       }
 
@@ -133,15 +223,15 @@ const ForgotPasswordScreen = ({ navigation }) => {
       console.error('Error reenviando código:', error);
       
       if (error.response) {
-        const errorMessage = error.response.data?.message || 'Error del servidor';
-        Alert.alert('Error', errorMessage);
+        const errorMessage = error.response.data?.message || tf('serverError');
+        Alert.alert(tf('error'), errorMessage);
       } else if (error.request) {
         Alert.alert(
-          'Error de conexión', 
-          'No se pudo conectar al servidor. Verifica tu conexión a internet.'
+          tf('connectionError'), 
+          tf('connectionErrorMessage')
         );
       } else {
-        Alert.alert('Error', 'Ocurrió un error inesperado. Inténtalo de nuevo.');
+        Alert.alert(tf('error'), tf('unexpectedError'));
       }
     } finally {
       setIsLoading(false);
@@ -184,17 +274,17 @@ const ForgotPasswordScreen = ({ navigation }) => {
       <View style={styles.infoContainer}>
         <Mail size={48 * SCALE} color={colors.primary} />
         <Text style={[styles.infoTitle, { color: colors.text }]}>
-          ¿Olvidaste tu contraseña?
+          {tf('forgotPassword')}
         </Text>
         <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-          No te preocupes, ingresa tu correo electrónico y te enviaremos un código para restablecer tu contraseña.
+          {tf('forgotPasswordDescription')}
         </Text>
       </View>
 
       {/* Input de email */}
       <View style={styles.inputSection}>
         <Text style={[styles.inputLabel, { color: colors.text }]}>
-          Correo electrónico
+          {tf('email')}
         </Text>
         <View style={[
           styles.emailContainer,
@@ -210,7 +300,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
           <Mail size={20 * SCALE} color={colors.textSecondary} style={styles.emailIcon} />
           <TextInput
             style={[styles.emailInput, { color: colors.text }]}
-            placeholder="ejemplo@correo.com"
+            placeholder={tf('emailPlaceholder')}
             placeholderTextColor={colors.placeholder}
             value={email}
             onChangeText={setEmail}
@@ -227,7 +317,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
           <View style={styles.errorContainer}>
             <Info size={14 * SCALE} color={colors.error} />
             <Text style={[styles.errorText, { color: colors.error }]}>
-              Ingresa un correo electrónico válido
+              {tf('enterValidEmail')}
             </Text>
           </View>
         )}
@@ -236,7 +326,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
           <View style={styles.successContainer}>
             <CheckCircle size={14 * SCALE} color={colors.success} />
             <Text style={[styles.successText, { color: colors.success }]}>
-              Correo electrónico válido
+              {tf('validEmail')}
             </Text>
           </View>
         )}
@@ -244,15 +334,15 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
       {/* Consejos */}
       <View style={[styles.tipsContainer, { backgroundColor: colors.surfaceVariant }]}>
-        <Text style={[styles.tipsTitle, { color: colors.text }]}>💡 Consejos:</Text>
+        <Text style={[styles.tipsTitle, { color: colors.text }]}>{tf('tips')}</Text>
         <Text style={[styles.tipText, { color: colors.textSecondary }]}>
-          • Verifica que el correo esté escrito correctamente
+          {tf('tipCheckEmail')}
         </Text>
         <Text style={[styles.tipText, { color: colors.textSecondary }]}>
-          • Revisa tu bandeja de spam si no recibes el código
+          {tf('tipCheckSpam')}
         </Text>
         <Text style={[styles.tipText, { color: colors.textSecondary }]}>
-          • El código expira en 15 minutos
+          {tf('tipExpiration')}
         </Text>
       </View>
     </>
@@ -264,16 +354,16 @@ const ForgotPasswordScreen = ({ navigation }) => {
       <View style={styles.confirmationContainer}>
         <CheckCircle size={64 * SCALE} color={colors.success} />
         <Text style={[styles.confirmationTitle, { color: colors.text }]}>
-          ¡Código enviado!
+          {tf('codeSentTitle')}
         </Text>
         <Text style={[styles.confirmationText, { color: colors.textSecondary }]}>
-          Hemos enviado un código de 6 dígitos a:
+          {tf('codeSentTo')}
         </Text>
         <Text style={[styles.emailDisplay, { color: colors.primary }]}>
           {email}
         </Text>
         <Text style={[styles.confirmationSubtext, { color: colors.textTertiary }]}>
-          Revisa tu bandeja de entrada y spam. El código expira en 15 minutos.
+          {tf('codeSentSubtext')}
         </Text>
       </View>
 
@@ -287,7 +377,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
           onPress={handleVerifyCode}
           disabled={isLoading}
         >
-          <Text style={styles.verifyButtonText}>Verificar código</Text>
+          <Text style={styles.verifyButtonText}>{tf('verifyCode')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
@@ -311,7 +401,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
             styles.resendButtonText,
             { color: (countdown > 0 || isLoading) ? colors.textSecondary : colors.primary }
           ]}>
-            {isLoading ? 'Enviando...' : countdown > 0 ? `Reenviar en ${countdown}s` : 'Reenviar código'}
+            {isLoading ? tf('sending') : countdown > 0 ? `${tf('resendIn')} ${countdown}${tf('seconds')}` : tf('resendCode')}
           </Text>
         </TouchableOpacity>
 
@@ -323,7 +413,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
           <Text style={[styles.backToLoginText, { 
             color: isLoading ? colors.textTertiary : colors.textSecondary 
           }]}>
-            Volver al inicio de sesión
+            {tf('backToLogin')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -386,7 +476,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
                 <Send size={18 * SCALE} color="#fff" />
               )}
               <Text style={styles.sendButtonText}>
-                {isLoading ? 'Enviando...' : 'Enviar código'}
+                {isLoading ? tf('sending') : tf('sendCode')}
               </Text>
             </TouchableOpacity>
           </View>

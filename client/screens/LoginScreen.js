@@ -1,4 +1,4 @@
-// LoginScreen.js - CON AUTENTICACIÓN BIOMÉTRICA INTEGRADA
+// LoginScreen.js - CON AUTENTICACIÓN BIOMÉTRICA INTEGRADA Y SOPORTE MULTIIDIOMA
 import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, 
@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Infinity, Eye, EyeOff, Fingerprint } from 'lucide-react-native';
 import { useTheme } from './ThemeContext';
+import { useLanguage } from './LanguageContext'; // ✅ AGREGAR ESTA LÍNEA
 import api from '../services/api';
 import { useGitHubAuth, GitHubButton } from '../services/GitHubAuth';
 import BiometricAuthService from '../services/BiometricAuth';
@@ -23,9 +24,143 @@ if (__DEV__) {
   LogBox.ignoreAllLogs(true);
 }
 
+// ✅ AGREGAR TODO ESTE OBJETO DE TEXTOS
+const loginTexts = {
+  es: {
+    // Tabs
+    loginTab: 'Iniciar Sesión',
+    registerTab: 'Registrarse',
+    
+    // Form fields
+    email: 'Correo electrónico',
+    password: 'Contraseña',
+    confirmPassword: 'Confirmar contraseña',
+    name: 'Nombre',
+    lastName: 'Apellido',
+    passwordMinChars: 'Contraseña (mín. 6 caracteres)',
+    
+    // Buttons
+    login: 'Entrar',
+    register: 'Registrarse',
+    forgotPassword: '¿Olvidaste tu contraseña?',
+    
+    // Loading states
+    loggingIn: 'Iniciando sesión...',
+    registering: 'Registrando...',
+    authenticating: 'Autenticando...',
+    
+    // Biometric
+    useBiometric: 'Usar',
+    
+    // Separators
+    orLoginWith: 'o inicia sesión con',
+    or: 'o',
+    
+    // Validations
+    completeAllFields: 'Por favor completa todos los campos',
+    invalidEmail: 'Por favor ingresa un email válido',
+    passwordTooShort: 'La contraseña debe tener al menos 6 caracteres',
+    passwordsDontMatch: 'Las contraseñas no coinciden',
+    
+    // Success messages
+    loginSuccess: 'Inicio de sesión exitoso',
+    registerSuccess: 'Usuario registrado exitosamente',
+    biometricLoginSuccess: 'Inicio de sesión biométrico exitoso',
+    
+    // Error messages
+    loginError: 'Error al iniciar sesión',
+    registerError: 'Error al registrar usuario',
+    biometricError: 'Error Biométrico',
+    biometricGeneralError: 'Error al realizar autenticación biométrica',
+    incorrectCredentials: 'Credenciales incorrectas. Verifica tu email y contraseña.',
+    connectionError: 'Error de conexión. Verifica tu internet e intenta nuevamente.',
+    invalidData: 'Datos inválidos. Verifica la información ingresada.',
+    gitHubError: 'Error de GitHub',
+    gitHubConnectionError: 'Error al iniciar sesión con GitHub. Verifica tu conexión e intenta nuevamente.',
+    gitHubConfigError: 'GitHub OAuth no está configurado correctamente. Verifica la configuración en GitHubAuth.js',
+    gitHubProcessError: 'Error al completar el inicio de sesión. Intenta nuevamente.',
+    
+    // Welcome
+    welcome: '¡Bienvenido',
+    
+    // General
+    success: 'Éxito',
+    error: 'Error',
+    ok: 'OK'
+  },
+  en: {
+    // Tabs
+    loginTab: 'Sign In',
+    registerTab: 'Sign Up',
+    
+    // Form fields
+    email: 'Email address',
+    password: 'Password',
+    confirmPassword: 'Confirm password',
+    name: 'First Name',
+    lastName: 'Last Name',
+    passwordMinChars: 'Password (min. 6 characters)',
+    
+    // Buttons
+    login: 'Sign In',
+    register: 'Sign Up',
+    forgotPassword: 'Forgot your password?',
+    
+    // Loading states
+    loggingIn: 'Signing in...',
+    registering: 'Signing up...',
+    authenticating: 'Authenticating...',
+    
+    // Biometric
+    useBiometric: 'Use',
+    
+    // Separators
+    orLoginWith: 'or sign in with',
+    or: 'or',
+    
+    // Validations
+    completeAllFields: 'Please complete all fields',
+    invalidEmail: 'Please enter a valid email',
+    passwordTooShort: 'Password must be at least 6 characters',
+    passwordsDontMatch: 'Passwords do not match',
+    
+    // Success messages
+    loginSuccess: 'Login successful',
+    registerSuccess: 'User registered successfully',
+    biometricLoginSuccess: 'Biometric login successful',
+    
+    // Error messages
+    loginError: 'Login error',
+    registerError: 'Registration error',
+    biometricError: 'Biometric Error',
+    biometricGeneralError: 'Error performing biometric authentication',
+    incorrectCredentials: 'Incorrect credentials. Check your email and password.',
+    connectionError: 'Connection error. Check your internet and try again.',
+    invalidData: 'Invalid data. Check the entered information.',
+    gitHubError: 'GitHub Error',
+    gitHubConnectionError: 'Error signing in with GitHub. Check your connection and try again.',
+    gitHubConfigError: 'GitHub OAuth is not configured correctly. Check the configuration in GitHubAuth.js',
+    gitHubProcessError: 'Error completing sign in. Please try again.',
+    
+    // Welcome
+    welcome: 'Welcome',
+    
+    // General
+    success: 'Success',
+    error: 'Error',
+    ok: 'OK'
+  }
+};
+
 const LoginScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('login');
   const { colors } = useTheme();
+  const { currentLanguage } = useLanguage(); // ✅ AGREGAR ESTA LÍNEA
+  
+  // ✅ AGREGAR ESTA FUNCIÓN
+  const getText = (key) => {
+    return loginTexts[currentLanguage]?.[key] || loginTexts['en'][key] || key;
+  };
   
   // Estados para Login
   const [email, setEmail] = useState('');
@@ -53,7 +188,6 @@ const LoginScreen = ({ navigation }) => {
     signInWithGitHub,
     request: gitHubRequest
   } = useGitHubAuth();
-
   // ✅ VERIFICAR SOPORTE BIOMÉTRICO AL CARGAR COMPONENTE
   useEffect(() => {
     checkBiometricAvailability();
@@ -65,78 +199,49 @@ const LoginScreen = ({ navigation }) => {
       setBiometricSupport(support);
       
       if (support.isSupported) {
-        // Verificar si hay sesión guardada y biométrico habilitado
         const shouldShow = await BiometricAuthService.shouldShowBiometricPrompt();
         const isEnabled = await BiometricAuthService.isBiometricEnabled();
         const hasSession = await BiometricAuthService.checkUserHasStoredSession();
         
         setShowBiometricButton(hasSession && isEnabled);
-        
-        console.log('🔐 Estado biométrico:', {
-          soportado: support.isSupported,
-          habilitado: isEnabled,
-          tieneSesion: hasSession,
-          mostrarBoton: hasSession && isEnabled
-        });
       }
     } catch (error) {
       console.error('Error verificando capacidades biométricas:', error);
     }
   };
 
-  // ✅ FUNCIÓN PARA LOGIN BIOMÉTRICO RÁPIDO
   const handleBiometricLogin = async () => {
     setIsBiometricLoading(true);
     
     try {
-      console.log('🔐 Iniciando login biométrico...');
-      
       const result = await BiometricAuthService.quickBiometricLogin();
       
       if (result.success) {
-        console.log('✅ Login biométrico exitoso');
-        
         Alert.alert(
-          'Éxito', 
-          'Inicio de sesión biométrico exitoso',
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.navigate('Principal')
-            }
-          ]
+          getText('success'), 
+          getText('biometricLoginSuccess'),
+          [{ text: getText('ok'), onPress: () => navigation.navigate('Principal') }]
         );
       } else {
-        console.log('❌ Login biométrico fallido:', result.reason);
-        
-        // Solo mostrar alerta si no fue cancelado por el usuario
         if (!result.reason?.includes('cancelada') && !result.reason?.includes('UserCancel')) {
-          Alert.alert('Error Biométrico', result.reason);
+          Alert.alert(getText('biometricError'), result.reason);
         }
       }
     } catch (error) {
-      console.error('Error en login biométrico:', error);
-      Alert.alert('Error', 'Error al realizar autenticación biométrica');
+      Alert.alert(getText('error'), getText('biometricGeneralError'));
     } finally {
       setIsBiometricLoading(false);
     }
   };
 
-  // ✅ FUNCIÓN MEJORADA PARA MOSTRAR PROMPT BIOMÉTRICO DESPUÉS DEL LOGIN
   const promptBiometricSetup = async () => {
     try {
       const shouldPrompt = await BiometricAuthService.shouldShowBiometricPrompt();
       
       if (shouldPrompt) {
-        console.log('💡 Mostrando prompt para habilitar biométrico...');
-        
         const result = await BiometricAuthService.promptToEnableBiometric();
-        
         if (result.success) {
-          console.log('✅ Biométrico habilitado desde prompt');
           setShowBiometricButton(true);
-        } else if (!result.cancelled) {
-          console.log('❌ Error habilitando biométrico:', result.reason);
         }
       }
     } catch (error) {
@@ -144,106 +249,67 @@ const LoginScreen = ({ navigation }) => {
     }
   };
 
-  // Función para validar email
   const isValidEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   };
 
-  // ✅ FUNCIÓN DE MANEJO DE ÉXITO DE GITHUB MEJORADA
   const handleGitHubAuthSuccess = async (userData) => {
     try {
-      console.log('🎉 GitHub auth exitosa, procesando navegación...');
-      console.log('🎉 Usuario:', userData.login || userData.name);
-      console.log('🎉 ID de usuario en BD:', userData.id_usuario);
-      
-      // Verificar que el ID de usuario esté guardado
       const storedUserId = await SecureStore.getItemAsync('user_id');
-      console.log('✅ User ID en storage:', storedUserId);
       
       if (!storedUserId && userData.id_usuario) {
         await SecureStore.setItemAsync('user_id', userData.id_usuario.toString());
-        console.log('✅ User ID guardado como fallback:', userData.id_usuario);
       }
       
-      // Verificar si mostrar prompt biométrico
       await promptBiometricSetup();
       
       Alert.alert(
-        'Éxito', 
-        `¡Bienvenido ${userData.name || userData.login}!`,
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.navigate('Principal')
-          }
-        ]
+        getText('success'), 
+        `${getText('welcome')} ${userData.name || userData.login}!`,
+        [{ text: getText('ok'), onPress: () => navigation.navigate('Principal') }]
       );
       
     } catch (error) {
-      console.error('❌ Error procesando navegación de GitHub:', error);
-      Alert.alert(
-        'Error', 
-        'Error al completar el inicio de sesión. Intenta nuevamente.'
-      );
+      Alert.alert(getText('error'), getText('gitHubProcessError'));
     }
   };
 
   const handleLogin = async () => {
-    // Validaciones básicas
     if (!email || !password) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+      Alert.alert(getText('error'), getText('completeAllFields'));
       return;
     }
 
     if (!isValidEmail(email)) {
-      Alert.alert('Error', 'Por favor ingresa un email válido');
+      Alert.alert(getText('error'), getText('invalidEmail'));
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // Hacer petición al backend
       const response = await api.post('/api/users/login', {
         email: email.trim().toLowerCase(),
         password: password
       });
 
-      // Si llegamos aquí, el login fue exitoso
-      console.log('Login exitoso:', response.data);
-      
-      // Guardar user ID
       if (response.data?.data?.user?.id) {
         const userId = response.data.data.user.id.toString();
         await SecureStore.setItemAsync('user_id', userId);
-        console.log('✅ User ID guardado para login normal:', userId);
-        
-        const verificacion = await SecureStore.getItemAsync('user_id');
-        console.log('✅ Verificación - User ID en storage después del login:', verificacion);
-      } else {
-        console.error('❌ Estructura de respuesta inesperada:', response.data);
-        const possibleId = response.data?.user?.id || response.data?.data?.user?.id_usuario || response.data?.user?.id_usuario;
-        if (possibleId) {
-          await SecureStore.setItemAsync('user_id', possibleId.toString());
-          console.log('✅ User ID guardado con fallback:', possibleId);
-        }
       }
       
-      // ✅ VERIFICAR SI MOSTRAR PROMPT BIOMÉTRICO DESPUÉS DEL LOGIN EXITOSO
       await promptBiometricSetup();
       
       Alert.alert(
-        'Éxito', 
-        'Inicio de sesión exitoso',
+        getText('success'), 
+        getText('loginSuccess'),
         [
           {
-            text: 'OK',
+            text: getText('ok'),
             onPress: () => {
-              // Limpiar campos
               setEmail('');
               setPassword('');
-              // Navegar a la pantalla principal
               navigation.navigate('Principal');
             }
           }
@@ -251,52 +317,48 @@ const LoginScreen = ({ navigation }) => {
       );
 
     } catch (error) {
-      console.error('Error en login:', error.response?.data || error.message);
-      
-      let errorMessage = 'Error al iniciar sesión';
+      let errorMessage = getText('loginError');
       
       if (error.response) {
         if (error.response.status === 401) {
-          errorMessage = 'Credenciales incorrectas. Verifica tu email y contraseña.';
+          errorMessage = getText('incorrectCredentials');
         } else if (error.response.data?.message) {
           errorMessage = error.response.data.message;
         }
       } else if (error.request) {
-        errorMessage = 'Error de conexión. Verifica tu internet e intenta nuevamente.';
+        errorMessage = getText('connectionError');
       }
       
-      Alert.alert('Error', errorMessage);
+      Alert.alert(getText('error'), errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleRegister = async () => {
-    // Validaciones básicas
     if (!registerName || !registerLastName || !registerEmail || !registerPassword || !confirmPassword) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+      Alert.alert(getText('error'), getText('completeAllFields'));
       return;
     }
 
     if (!isValidEmail(registerEmail)) {
-      Alert.alert('Error', 'Por favor ingresa un email válido');
+      Alert.alert(getText('error'), getText('invalidEmail'));
       return;
     }
 
     if (registerPassword.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+      Alert.alert(getText('error'), getText('passwordTooShort'));
       return;
     }
 
     if (registerPassword !== confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas no coinciden');
+      Alert.alert(getText('error'), getText('passwordsDontMatch'));
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // Hacer petición al backend
       const response = await api.post('/api/users/register', {
         name: registerName.trim(),
         lastName: registerLastName.trim(),
@@ -304,43 +366,25 @@ const LoginScreen = ({ navigation }) => {
         password: registerPassword
       });
 
-      // Si llegamos aquí, el registro fue exitoso
-      console.log('Registro exitoso:', response.data);
-      
-      // Guardar user ID
       if (response.data?.data?.user?.id) {
         const userId = response.data.data.user.id.toString();
         await SecureStore.setItemAsync('user_id', userId);
-        console.log('✅ User ID guardado para registro:', userId);
-        
-        const verificacion = await SecureStore.getItemAsync('user_id');
-        console.log('✅ Verificación - User ID en storage después del registro:', verificacion);
-      } else {
-        console.error('❌ Estructura de respuesta inesperada en registro:', response.data);
-        const possibleId = response.data?.user?.id || response.data?.data?.user?.id_usuario || response.data?.user?.id_usuario;
-        if (possibleId) {
-          await SecureStore.setItemAsync('user_id', possibleId.toString());
-          console.log('✅ User ID guardado con fallback en registro:', possibleId);
-        }
       }
       
-      // ✅ VERIFICAR SI MOSTRAR PROMPT BIOMÉTRICO DESPUÉS DEL REGISTRO EXITOSO
       await promptBiometricSetup();
       
       Alert.alert(
-        'Éxito', 
-        'Usuario registrado exitosamente',
+        getText('success'), 
+        getText('registerSuccess'),
         [
           {
-            text: 'OK',
+            text: getText('ok'),
             onPress: () => {
-              // Limpiar campos
               setRegisterName('');
               setRegisterLastName('');
               setRegisterEmail('');
               setRegisterPassword('');
               setConfirmPassword('');
-              // Navegar a la pantalla principal
               navigation.navigate('Principal');
             }
           }
@@ -348,42 +392,34 @@ const LoginScreen = ({ navigation }) => {
       );
 
     } catch (error) {
-      console.error('Error en registro:', error.response?.data || error.message);
-      
-      let errorMessage = 'Error al registrar usuario';
+      let errorMessage = getText('registerError');
       
       if (error.response) {
         if (error.response.status === 400) {
-          errorMessage = error.response.data?.message || 'Datos inválidos. Verifica la información ingresada.';
+          errorMessage = error.response.data?.message || getText('invalidData');
         } else if (error.response.data?.message) {
           errorMessage = error.response.data.message;
         }
       } else if (error.request) {
-        errorMessage = 'Error de conexión. Verifica tu internet e intenta nuevamente.';
+        errorMessage = getText('connectionError');
       }
       
-      Alert.alert('Error', errorMessage);
+      Alert.alert(getText('error'), errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Función simplificada para GitHub login
   const handleGitHubLogin = async () => {
     if (!gitHubRequest) {
-      Alert.alert('Error', 'GitHub OAuth no está configurado correctamente. Verifica la configuración en GitHubAuth.js');
+      Alert.alert(getText('error'), getText('gitHubConfigError'));
       return;
     }
 
     try {
-      console.log('🚀 Iniciando autenticación con GitHub...');
       await signInWithGitHub(handleGitHubAuthSuccess);
     } catch (error) {
-      console.error('Error iniciando sesión con GitHub:', error);
-      Alert.alert(
-        'Error de GitHub', 
-        'Error al iniciar sesión con GitHub. Verifica tu conexión e intenta nuevamente.'
-      );
+      Alert.alert(getText('gitHubError'), getText('gitHubConnectionError'));
     }
   };
 
@@ -397,7 +433,6 @@ const LoginScreen = ({ navigation }) => {
     }
   };
 
-  // ✅ BOTÓN BIOMÉTRICO PERSONALIZADO
   const renderBiometricButton = () => {
     if (!showBiometricButton || !biometricSupport?.isSupported) {
       return null;
@@ -421,14 +456,14 @@ const LoginScreen = ({ navigation }) => {
               color: colors.primary,
               marginLeft: 8 
             }]}>
-              Autenticando...
+              {getText('authenticating')}
             </Text>
           </View>
         ) : (
           <View style={styles.biometricContent}>
             <Fingerprint size={24} color={colors.primary} />
             <Text style={[styles.biometricButtonText, { color: colors.primary }]}>
-              Usar {biometricTypeText}
+              {getText('useBiometric')} {biometricTypeText}
             </Text>
           </View>
         )}
@@ -438,13 +473,12 @@ const LoginScreen = ({ navigation }) => {
 
   const renderLoginForm = () => (
     <View style={styles.formContainer}>
-      {/* ✅ BOTÓN BIOMÉTRICO AL INICIO DEL LOGIN */}
       {renderBiometricButton()}
       
       {showBiometricButton && (
         <View style={styles.separatorContainer}>
           <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
-          <Text style={[styles.separatorText, { color: colors.textSecondary }]}>o inicia sesión con</Text>
+          <Text style={[styles.separatorText, { color: colors.textSecondary }]}>{getText('orLoginWith')}</Text>
           <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
         </View>
       )}
@@ -456,7 +490,7 @@ const LoginScreen = ({ navigation }) => {
             backgroundColor: colors.input,
             color: colors.text
           }]}
-          placeholder="Correo electrónico"
+          placeholder={getText('email')}
           placeholderTextColor={colors.placeholder}
           value={email}
           onChangeText={setEmail}
@@ -474,7 +508,7 @@ const LoginScreen = ({ navigation }) => {
         }]}>
           <TextInput
             style={[styles.passwordInput, { color: colors.text }]}
-            placeholder="Contraseña"
+            placeholder={getText('password')}
             placeholderTextColor={colors.placeholder}
             value={password}
             onChangeText={setPassword}
@@ -507,22 +541,20 @@ const LoginScreen = ({ navigation }) => {
           <View style={styles.loadingContainer}>
             <ActivityIndicator color="#FFFFFF" size="small" />
             <Text style={[styles.loginButtonText, { marginLeft: 8 }]}>
-              Iniciando sesión...
+              {getText('loggingIn')}
             </Text>
           </View>
         ) : (
-          <Text style={styles.loginButtonText}>Entrar</Text>
+          <Text style={styles.loginButtonText}>{getText('login')}</Text>
         )}
       </TouchableOpacity>
 
-      {/* Separador para GitHub */}
       <View style={styles.separatorContainer}>
         <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
-        <Text style={[styles.separatorText, { color: colors.textSecondary }]}>o</Text>
+        <Text style={[styles.separatorText, { color: colors.textSecondary }]}>{getText('or')}</Text>
         <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
       </View>
 
-      {/* Botón de GitHub */}
       <GitHubButton 
         onPress={handleGitHubLogin}
         isLoading={isGitHubLoading}
@@ -535,7 +567,7 @@ const LoginScreen = ({ navigation }) => {
         disabled={isLoading || isGitHubLoading || isBiometricLoading}
       >
         <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>
-          ¿Olvidaste tu contraseña?
+          {getText('forgotPassword')}
         </Text>
       </TouchableOpacity>
     </View>
@@ -550,7 +582,7 @@ const LoginScreen = ({ navigation }) => {
             backgroundColor: colors.input,
             color: colors.text
           }]}
-          placeholder="Nombre"
+          placeholder={getText('name')}
           placeholderTextColor={colors.placeholder}
           value={registerName}
           onChangeText={setRegisterName}
@@ -566,7 +598,7 @@ const LoginScreen = ({ navigation }) => {
             backgroundColor: colors.input,
             color: colors.text
           }]}
-          placeholder="Apellido"
+          placeholder={getText('lastName')}
           placeholderTextColor={colors.placeholder}
           value={registerLastName}
           onChangeText={setRegisterLastName}
@@ -582,7 +614,7 @@ const LoginScreen = ({ navigation }) => {
             backgroundColor: colors.input,
             color: colors.text
           }]}
-          placeholder="Correo electrónico"
+          placeholder={getText('email')}
           placeholderTextColor={colors.placeholder}
           value={registerEmail}
           onChangeText={setRegisterEmail}
@@ -600,7 +632,7 @@ const LoginScreen = ({ navigation }) => {
         }]}>
           <TextInput
             style={[styles.passwordInput, { color: colors.text }]}
-            placeholder="Contraseña (mín. 6 caracteres)"
+            placeholder={getText('passwordMinChars')}
             placeholderTextColor={colors.placeholder}
             value={registerPassword}
             onChangeText={setRegisterPassword}
@@ -628,7 +660,7 @@ const LoginScreen = ({ navigation }) => {
         }]}>
           <TextInput
             style={[styles.passwordInput, { color: colors.text }]}
-            placeholder="Confirmar contraseña"
+            placeholder={getText('confirmPassword')}
             placeholderTextColor={colors.placeholder}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
@@ -661,22 +693,20 @@ const LoginScreen = ({ navigation }) => {
           <View style={styles.loadingContainer}>
             <ActivityIndicator color="#FFFFFF" size="small" />
             <Text style={[styles.loginButtonText, { marginLeft: 8 }]}>
-              Registrando...
+              {getText('registering')}
             </Text>
           </View>
         ) : (
-          <Text style={styles.loginButtonText}>Registrarse</Text>
+          <Text style={styles.loginButtonText}>{getText('register')}</Text>
         )}
       </TouchableOpacity>
 
-      {/* Separador para GitHub */}
       <View style={styles.separatorContainer}>
         <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
-        <Text style={[styles.separatorText, { color: colors.textSecondary }]}>o</Text>
+        <Text style={[styles.separatorText, { color: colors.textSecondary }]}>{getText('or')}</Text>
         <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
       </View>
 
-      {/* Botón de GitHub */}
       <GitHubButton 
         onPress={handleGitHubLogin}
         isLoading={isGitHubLoading}
@@ -688,7 +718,6 @@ const LoginScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.content}>
-        {/* Logo Section */}
         <View style={styles.logoSection}>
           <Infinity 
             size={60} 
@@ -699,7 +728,6 @@ const LoginScreen = ({ navigation }) => {
           <Text style={[styles.appName, { color: colors.primary }]}>HabitFlow</Text>
         </View>
 
-        {/* Tabs */}
         <View style={[styles.tabContainer, { backgroundColor: colors.surfaceVariant }]}>
           <TouchableOpacity 
             style={[
@@ -714,7 +742,7 @@ const LoginScreen = ({ navigation }) => {
               { color: colors.textSecondary },
               activeTab === 'login' && { ...styles.activeTabText, color: colors.primary }
             ]}>
-              Iniciar Sesión
+              {getText('loginTab')}
             </Text>
           </TouchableOpacity>
           
@@ -731,18 +759,18 @@ const LoginScreen = ({ navigation }) => {
               { color: colors.textSecondary },
               activeTab === 'register' && { ...styles.activeTabText, color: colors.primary }
             ]}>
-              Registrarse
+              {getText('registerTab')}
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Form Content */}
         {activeTab === 'login' ? renderLoginForm() : renderRegisterForm()}
       </View>
     </SafeAreaView>
   );
 };
 
+// MANTÉN TODOS TUS ESTILOS ORIGINALES
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -862,7 +890,6 @@ const styles = StyleSheet.create({
   forgotPasswordText: {
     fontSize: 16,
   },
-  // ✅ ESTILOS PARA EL BOTÓN BIOMÉTRICO
   biometricButton: {
     borderWidth: 2,
     borderRadius: 12,

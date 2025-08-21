@@ -12,12 +12,120 @@ import {
 } from 'react-native';
 import { ArrowLeft, Shield, RefreshCw } from 'lucide-react-native';
 import { useTheme } from './ThemeContext';
+import { useLanguage } from './LanguageContext';
 import api from '../services/api';
 
 const SCALE = 1.0;
 
+// Traducciones locales para esta pantalla
+const translations = {
+  es: {
+    // Títulos
+    verifyCodeTitle: 'Verificar código',
+    newPasswordTitle: 'Nueva contraseña',
+    
+    // Subtítulos
+    sendCodeTo: 'Ingresa el código de 6 dígitos enviado a',
+    setNewPassword: 'Establece tu nueva contraseña',
+    
+    // Campos de formulario
+    newPasswordField: 'Nueva contraseña',
+    confirmPassword: 'Confirmar contraseña',
+    minSixChars: 'Mínimo 6 caracteres',
+    confirmYourPassword: 'Confirma tu contraseña',
+    
+    // Botones
+    verifying: 'Verificando...',
+    verifyCodeButton: 'Verificar código',
+    resetting: 'Restableciendo...',
+    resetPassword: 'Restablecer contraseña',
+    login: 'Iniciar sesión',
+    
+    // Mensajes de validación
+    error: 'Error',
+    enterCompleteCode: 'Por favor ingresa el código completo',
+    fillAllFields: 'Por favor llena todos los campos',
+    passwordsDoNotMatch: 'Las contraseñas no coinciden',
+    passwordMinLength: 'La contraseña debe tener al menos 6 caracteres',
+    
+    // Mensajes de error
+    invalidOrExpiredCode: 'Código inválido o expirado',
+    serverError: 'Error del servidor',
+    connectionError: 'No se pudo conectar al servidor.',
+    unexpectedError: 'Ocurrió un error inesperado.',
+    couldNotResetPassword: 'No se pudo restablecer la contraseña',
+    
+    // Mensajes de éxito
+    codeVerified: '¡Código verificado!',
+    nowCanSetPassword: 'Ahora puedes establecer tu nueva contraseña',
+    passwordReset: '¡Contraseña restablecida!',
+    passwordUpdatedSuccess: 'Tu contraseña ha sido actualizada exitosamente',
+    
+    // Consejos
+    tips: '💡 Consejos:',
+    codeExpires: '• El código expira en 15 minutos',
+    checkSpam: '• Revisa tu bandeja de spam si no lo encuentras',
+    requestNewCode: '• Puedes solicitar un nuevo código si es necesario',
+    useAtLeastSixChars: '• Usa al menos 6 caracteres',
+    combineCharsNumbersSymbols: '• Combina letras, números y símbolos',
+    avoidPersonalInfo: '• Evita información personal',
+  },
+  en: {
+    // Títulos
+    verifyCodeTitle: 'Verify code',
+    newPasswordTitle: 'New password',
+    
+    // Subtítulos
+    sendCodeTo: 'Enter the 6-digit code sent to',
+    setNewPassword: 'Set your new password',
+    
+    // Campos de formulario
+    newPasswordField: 'New password',
+    confirmPassword: 'Confirm password',
+    minSixChars: 'Minimum 6 characters',
+    confirmYourPassword: 'Confirm your password',
+    
+    // Botones
+    verifying: 'Verifying...',
+    verifyCodeButton: 'Verify code',
+    resetting: 'Resetting...',
+    resetPassword: 'Reset password',
+    login: 'Log in',
+    
+    // Mensajes de validación
+    error: 'Error',
+    enterCompleteCode: 'Please enter the complete code',
+    fillAllFields: 'Please fill all fields',
+    passwordsDoNotMatch: 'Passwords do not match',
+    passwordMinLength: 'Password must be at least 6 characters',
+    
+    // Mensajes de error
+    invalidOrExpiredCode: 'Invalid or expired code',
+    serverError: 'Server error',
+    connectionError: 'Could not connect to server.',
+    unexpectedError: 'An unexpected error occurred.',
+    couldNotResetPassword: 'Could not reset password',
+    
+    // Mensajes de éxito
+    codeVerified: 'Code verified!',
+    nowCanSetPassword: 'Now you can set your new password',
+    passwordReset: 'Password reset!',
+    passwordUpdatedSuccess: 'Your password has been updated successfully',
+    
+    // Consejos
+    tips: '💡 Tips:',
+    codeExpires: '• Code expires in 15 minutes',
+    checkSpam: '• Check your spam folder if you can\'t find it',
+    requestNewCode: '• You can request a new code if needed',
+    useAtLeastSixChars: '• Use at least 6 characters',
+    combineCharsNumbersSymbols: '• Combine letters, numbers and symbols',
+    avoidPersonalInfo: '• Avoid personal information',
+  }
+};
+
 const VerifyCodeScreen = ({ route, navigation }) => {
   const { colors } = useTheme();
+  const { currentLanguage } = useLanguage();
   const { email } = route.params;
   
   const [code, setCode] = useState(['', '', '', '', '', '']);
@@ -27,6 +135,11 @@ const VerifyCodeScreen = ({ route, navigation }) => {
   const [showPasswordFields, setShowPasswordFields] = useState(false);
   
   const inputRefs = useRef([]);
+
+  // Función para obtener traducciones locales
+  const t = (key) => {
+    return translations[currentLanguage]?.[key] || translations['en'][key] || key;
+  };
 
   const handleCodeChange = (text, index) => {
     const newCode = [...code];
@@ -51,7 +164,7 @@ const VerifyCodeScreen = ({ route, navigation }) => {
 
   const handleVerifyCode = async () => {
     if (!isCodeComplete) {
-      Alert.alert('Error', 'Por favor ingresa el código completo');
+      Alert.alert(t('error'), t('enterCompleteCode'));
       return;
     }
 
@@ -69,20 +182,20 @@ const VerifyCodeScreen = ({ route, navigation }) => {
 
       if (response.data.success) {
         setShowPasswordFields(true);
-        Alert.alert('¡Código verificado!', 'Ahora puedes establecer tu nueva contraseña');
+        Alert.alert(t('codeVerified'), t('nowCanSetPassword'));
       } else {
-        Alert.alert('Error', response.data.message || 'Código inválido o expirado');
+        Alert.alert(t('error'), response.data.message || t('invalidOrExpiredCode'));
       }
     } catch (error) {
       console.error('Error verificando código:', error);
       
       if (error.response) {
-        const errorMessage = error.response.data?.message || 'Error del servidor';
-        Alert.alert('Error', errorMessage);
+        const errorMessage = error.response.data?.message || t('serverError');
+        Alert.alert(t('error'), errorMessage);
       } else if (error.request) {
-        Alert.alert('Error de conexión', 'No se pudo conectar al servidor.');
+        Alert.alert(t('error'), t('connectionError'));
       } else {
-        Alert.alert('Error', 'Ocurrió un error inesperado.');
+        Alert.alert(t('error'), t('unexpectedError'));
       }
     } finally {
       setIsLoading(false);
@@ -91,17 +204,17 @@ const VerifyCodeScreen = ({ route, navigation }) => {
 
   const handleResetPassword = async () => {
     if (!newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Por favor llena todos los campos');
+      Alert.alert(t('error'), t('fillAllFields'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas no coinciden');
+      Alert.alert(t('error'), t('passwordsDoNotMatch'));
       return;
     }
 
     if (newPassword.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+      Alert.alert(t('error'), t('passwordMinLength'));
       return;
     }
 
@@ -120,28 +233,28 @@ const VerifyCodeScreen = ({ route, navigation }) => {
 
       if (response.data.success) {
         Alert.alert(
-          '¡Contraseña restablecida!',
-          'Tu contraseña ha sido actualizada exitosamente',
+          t('passwordReset'),
+          t('passwordUpdatedSuccess'),
           [
             {
-              text: 'Iniciar sesión',
+              text: t('login'),
               onPress: () => navigation.navigate('Login')
             }
           ]
         );
       } else {
-        Alert.alert('Error', response.data.message || 'No se pudo restablecer la contraseña');
+        Alert.alert(t('error'), response.data.message || t('couldNotResetPassword'));
       }
     } catch (error) {
       console.error('Error restableciendo contraseña:', error);
       
       if (error.response) {
-        const errorMessage = error.response.data?.message || 'Error del servidor';
-        Alert.alert('Error', errorMessage);
+        const errorMessage = error.response.data?.message || t('serverError');
+        Alert.alert(t('error'), errorMessage);
       } else if (error.request) {
-        Alert.alert('Error de conexión', 'No se pudo conectar al servidor.');
+        Alert.alert(t('error'), t('connectionError'));
       } else {
-        Alert.alert('Error', 'Ocurrió un error inesperado.');
+        Alert.alert(t('error'), t('unexpectedError'));
       }
     } finally {
       setIsLoading(false);
@@ -169,12 +282,12 @@ const VerifyCodeScreen = ({ route, navigation }) => {
           <View style={styles.infoContainer}>
             <Shield size={48 * SCALE} color={colors.primary} />
             <Text style={[styles.title, { color: colors.text }]}>
-              {showPasswordFields ? 'Nueva contraseña' : 'Verificar código'}
+              {showPasswordFields ? t('newPasswordTitle') : t('verifyCodeTitle')}
             </Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
               {showPasswordFields 
-                ? 'Establece tu nueva contraseña' 
-                : `Ingresa el código de 6 dígitos enviado a ${email}`
+                ? t('setNewPassword')
+                : `${t('sendCodeTo')} ${email}`
               }
             </Text>
           </View>
@@ -225,7 +338,7 @@ const VerifyCodeScreen = ({ route, navigation }) => {
                   <Shield size={18 * SCALE} color="#fff" />
                 )}
                 <Text style={styles.verifyButtonText}>
-                  {isLoading ? 'Verificando...' : 'Verificar código'}
+                  {isLoading ? t('verifying') : t('verifyCodeButton')}
                 </Text>
               </TouchableOpacity>
             </>
@@ -235,7 +348,7 @@ const VerifyCodeScreen = ({ route, navigation }) => {
               <View style={styles.passwordSection}>
                 <View style={styles.inputGroup}>
                   <Text style={[styles.inputLabel, { color: colors.text }]}>
-                    Nueva contraseña
+                    {t('newPasswordField')}
                   </Text>
                   <TextInput
                     style={[
@@ -246,7 +359,7 @@ const VerifyCodeScreen = ({ route, navigation }) => {
                         color: colors.text
                       }
                     ]}
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder={t('minSixChars')}
                     placeholderTextColor={colors.placeholder}
                     value={newPassword}
                     onChangeText={setNewPassword}
@@ -257,7 +370,7 @@ const VerifyCodeScreen = ({ route, navigation }) => {
 
                 <View style={styles.inputGroup}>
                   <Text style={[styles.inputLabel, { color: colors.text }]}>
-                    Confirmar contraseña
+                    {t('confirmPassword')}
                   </Text>
                   <TextInput
                     style={[
@@ -271,7 +384,7 @@ const VerifyCodeScreen = ({ route, navigation }) => {
                         borderColor: colors.error
                       }
                     ]}
-                    placeholder="Confirma tu contraseña"
+                    placeholder={t('confirmYourPassword')}
                     placeholderTextColor={colors.placeholder}
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
@@ -280,7 +393,7 @@ const VerifyCodeScreen = ({ route, navigation }) => {
                   />
                   {confirmPassword && newPassword !== confirmPassword && (
                     <Text style={[styles.errorText, { color: colors.error }]}>
-                      Las contraseñas no coinciden
+                      {t('passwordsDoNotMatch')}
                     </Text>
                   )}
                 </View>
@@ -304,7 +417,7 @@ const VerifyCodeScreen = ({ route, navigation }) => {
                   <Shield size={18 * SCALE} color="#fff" />
                 )}
                 <Text style={styles.resetButtonText}>
-                  {isLoading ? 'Restableciendo...' : 'Restablecer contraseña'}
+                  {isLoading ? t('resetting') : t('resetPassword')}
                 </Text>
               </TouchableOpacity>
             </>
@@ -312,29 +425,31 @@ const VerifyCodeScreen = ({ route, navigation }) => {
 
           {/* Consejos */}
           <View style={[styles.tipsContainer, { backgroundColor: colors.surfaceVariant }]}>
-            <Text style={[styles.tipsTitle, { color: colors.text }]}>💡 Consejos:</Text>
+            <Text style={[styles.tipsTitle, { color: colors.text }]}>
+              {t('tips')}
+            </Text>
             {!showPasswordFields ? (
               <>
                 <Text style={[styles.tipText, { color: colors.textSecondary }]}>
-                  • El código expira en 15 minutos
+                  {t('codeExpires')}
                 </Text>
                 <Text style={[styles.tipText, { color: colors.textSecondary }]}>
-                  • Revisa tu bandeja de spam si no lo encuentras
+                  {t('checkSpam')}
                 </Text>
                 <Text style={[styles.tipText, { color: colors.textSecondary }]}>
-                  • Puedes solicitar un nuevo código si es necesario
+                  {t('requestNewCode')}
                 </Text>
               </>
             ) : (
               <>
                 <Text style={[styles.tipText, { color: colors.textSecondary }]}>
-                  • Usa al menos 6 caracteres
+                  {t('useAtLeastSixChars')}
                 </Text>
                 <Text style={[styles.tipText, { color: colors.textSecondary }]}>
-                  • Combina letras, números y símbolos
+                  {t('combineCharsNumbersSymbols')}
                 </Text>
                 <Text style={[styles.tipText, { color: colors.textSecondary }]}>
-                  • Evita información personal
+                  {t('avoidPersonalInfo')}
                 </Text>
               </>
             )}

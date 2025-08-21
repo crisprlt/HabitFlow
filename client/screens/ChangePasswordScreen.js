@@ -22,6 +22,7 @@ import {
   AlertCircle
 } from 'lucide-react-native';
 import { useTheme } from './ThemeContext';
+import { useLanguage } from './LanguageContext'; // ✅ Importar useLanguage
 import api from '../services/api';
 import * as SecureStore from 'expo-secure-store';
 
@@ -29,6 +30,7 @@ const SCALE = 1.0;
 
 const ChangePasswordScreen = ({ navigation }) => {
   const { colors } = useTheme();
+  const { t, currentLanguage } = useLanguage(); // ✅ Usar contexto de idioma
   
   const [userId, setUserId] = useState(null);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -40,6 +42,130 @@ const ChangePasswordScreen = ({ navigation }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const [isLoading, setIsLoading] = useState(false);
+
+  // ✅ Traducciones específicas para cambio de contraseña
+  const changePasswordTranslations = {
+    es: {
+      changePassword: 'Cambiar Contraseña',
+      securityMessage: 'Mantén tu cuenta segura con una contraseña fuerte',
+      currentPassword: 'Contraseña actual',
+      currentPasswordPlaceholder: 'Ingresa tu contraseña actual',
+      newPassword: 'Nueva contraseña',
+      newPasswordPlaceholder: 'Ingresa tu nueva contraseña',
+      confirmPassword: 'Confirmar nueva contraseña',
+      confirmPasswordPlaceholder: 'Confirma tu nueva contraseña',
+      // Fortaleza de contraseña
+      weak: 'Débil',
+      medium: 'Media',
+      strong: 'Fuerte',
+      veryStrong: 'Muy fuerte',
+      // Requisitos
+      requirements: 'Requisitos:',
+      atLeast8Chars: 'Al menos 8 caracteres',
+      oneUppercase: 'Una letra mayúscula',
+      oneLowercase: 'Una letra minúscula',
+      oneNumber: 'Un número',
+      oneSpecialChar: 'Un carácter especial (!@#$%^&*)',
+      // Coincidencia
+      passwordsMatch: 'Las contraseñas coinciden',
+      passwordsNoMatch: 'Las contraseñas no coinciden',
+      // Consejos
+      securityTips: '💡 Consejos de seguridad:',
+      tip1: '• Usa una combinación de letras, números y símbolos',
+      tip2: '• Evita información personal como nombres o fechas',
+      tip3: '• No reutilices contraseñas de otras cuentas',
+      tip4: '• Cambia tu contraseña regularmente',
+      // Botones y acciones
+      changing: 'Cambiando...',
+      // Validaciones y errores
+      sessionExpired: 'Sesión expirada',
+      loginAgain: 'Por favor, inicia sesión nuevamente',
+      userInfoError: 'Error al obtener información de usuario',
+      enterCurrentPassword: 'Por favor ingresa tu contraseña actual',
+      enterNewPassword: 'Por favor ingresa una nueva contraseña',
+      passwordMinLength: 'La nueva contraseña debe tener al menos 8 caracteres',
+      passwordsNoMatchError: 'Las contraseñas no coinciden',
+      passwordsMustBeDifferent: 'La nueva contraseña debe ser diferente a la actual',
+      weakPasswordWarning: 'Contraseña débil',
+      weakPasswordMessage: 'Te recomendamos usar una contraseña más fuerte. ¿Deseas continuar?',
+      cancel: 'Cancelar',
+      continue: 'Continuar',
+      success: '¡Éxito!',
+      passwordChanged: 'Tu contraseña ha sido cambiada correctamente',
+      ok: 'OK',
+      error: 'Error',
+      incorrectCurrentPassword: 'Contraseña actual incorrecta',
+      userNotFound: 'Usuario no encontrado',
+      changePasswordError: 'No se pudo cambiar la contraseña. Inténtalo de nuevo.',
+      userIdError: 'No se pudo obtener la información del usuario'
+    },
+    en: {
+      changePassword: 'Change Password',
+      securityMessage: 'Keep your account secure with a strong password',
+      currentPassword: 'Current password',
+      currentPasswordPlaceholder: 'Enter your current password',
+      newPassword: 'New password',
+      newPasswordPlaceholder: 'Enter your new password',
+      confirmPassword: 'Confirm new password',
+      confirmPasswordPlaceholder: 'Confirm your new password',
+      // Password strength
+      weak: 'Weak',
+      medium: 'Medium',
+      strong: 'Strong',
+      veryStrong: 'Very strong',
+      // Requirements
+      requirements: 'Requirements:',
+      atLeast8Chars: 'At least 8 characters',
+      oneUppercase: 'One uppercase letter',
+      oneLowercase: 'One lowercase letter',
+      oneNumber: 'One number',
+      oneSpecialChar: 'One special character (!@#$%^&*)',
+      // Match validation
+      passwordsMatch: 'Passwords match',
+      passwordsNoMatch: 'Passwords do not match',
+      // Tips
+      securityTips: '💡 Security tips:',
+      tip1: '• Use a combination of letters, numbers and symbols',
+      tip2: '• Avoid personal information like names or dates',
+      tip3: '• Don\'t reuse passwords from other accounts',
+      tip4: '• Change your password regularly',
+      // Buttons and actions
+      changing: 'Changing...',
+      // Validations and errors
+      sessionExpired: 'Session expired',
+      loginAgain: 'Please log in again',
+      userInfoError: 'Error getting user information',
+      enterCurrentPassword: 'Please enter your current password',
+      enterNewPassword: 'Please enter a new password',
+      passwordMinLength: 'New password must be at least 8 characters',
+      passwordsNoMatchError: 'Passwords do not match',
+      passwordsMustBeDifferent: 'New password must be different from current',
+      weakPasswordWarning: 'Weak password',
+      weakPasswordMessage: 'We recommend using a stronger password. Do you want to continue?',
+      cancel: 'Cancel',
+      continue: 'Continue',
+      success: 'Success!',
+      passwordChanged: 'Your password has been changed successfully',
+      ok: 'OK',
+      error: 'Error',
+      incorrectCurrentPassword: 'Incorrect current password',
+      userNotFound: 'User not found',
+      changePasswordError: 'Could not change password. Please try again.',
+      userIdError: 'Could not get user information'
+    }
+  };
+
+  // ✅ Función helper para obtener traducciones de cambio de contraseña
+  const tcp = (key) => {
+    const keys = key.split('.');
+    let value = changePasswordTranslations[currentLanguage];
+    
+    for (const k of keys) {
+      value = value?.[k];
+    }
+    
+    return value || changePasswordTranslations['en'][key] || key;
+  };
 
   // Obtener userId del SecureStore al montar el componente
   useEffect(() => {
@@ -53,11 +179,11 @@ const ChangePasswordScreen = ({ navigation }) => {
         } else {
           console.log('❌ No se encontró user_id en SecureStore');
           Alert.alert(
-            'Sesión expirada',
-            'Por favor, inicia sesión nuevamente',
+            tcp('sessionExpired'),
+            tcp('loginAgain'),
             [
               {
-                text: 'OK',
+                text: tcp('ok'),
                 onPress: () => navigation.navigate('Login')
               }
             ]
@@ -65,12 +191,12 @@ const ChangePasswordScreen = ({ navigation }) => {
         }
       } catch (error) {
         console.error('❌ Error obteniendo userId del storage:', error);
-        Alert.alert('Error', 'Error al obtener información de usuario');
+        Alert.alert(tcp('error'), tcp('userInfoError'));
       }
     };
 
     getUserId();
-  }, []);
+  }, [currentLanguage]); // ✅ Agregar currentLanguage como dependencia
 
   // Validaciones de contraseña
   const validatePassword = (password) => {
@@ -95,11 +221,12 @@ const ChangePasswordScreen = ({ navigation }) => {
     return colors.success;
   };
 
+  // ✅ Función para obtener texto de fortaleza traducido
   const getStrengthText = () => {
-    if (passwordStrength.score <= 2) return 'Débil';
-    if (passwordStrength.score <= 3) return 'Media';
-    if (passwordStrength.score <= 4) return 'Fuerte';
-    return 'Muy fuerte';
+    if (passwordStrength.score <= 2) return tcp('weak');
+    if (passwordStrength.score <= 3) return tcp('medium');
+    if (passwordStrength.score <= 4) return tcp('strong');
+    return tcp('veryStrong');
   };
 
   const togglePasswordVisibility = (field) => {
@@ -119,43 +246,43 @@ const ChangePasswordScreen = ({ navigation }) => {
   const handleChangePassword = async () => {
     // Validar que tenemos el userId
     if (!userId) {
-      Alert.alert('Error', 'No se pudo obtener la información del usuario');
+      Alert.alert(tcp('error'), tcp('userIdError'));
       return;
     }
 
     // Validaciones básicas
     if (!currentPassword.trim()) {
-      Alert.alert('Error', 'Por favor ingresa tu contraseña actual');
+      Alert.alert(tcp('error'), tcp('enterCurrentPassword'));
       return;
     }
 
     if (!newPassword.trim()) {
-      Alert.alert('Error', 'Por favor ingresa una nueva contraseña');
+      Alert.alert(tcp('error'), tcp('enterNewPassword'));
       return;
     }
 
     if (newPassword.length < 8) {
-      Alert.alert('Error', 'La nueva contraseña debe tener al menos 8 caracteres');
+      Alert.alert(tcp('error'), tcp('passwordMinLength'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas no coinciden');
+      Alert.alert(tcp('error'), tcp('passwordsNoMatchError'));
       return;
     }
 
     if (currentPassword === newPassword) {
-      Alert.alert('Error', 'La nueva contraseña debe ser diferente a la actual');
+      Alert.alert(tcp('error'), tcp('passwordsMustBeDifferent'));
       return;
     }
 
     if (passwordStrength.score < 3) {
       Alert.alert(
-        'Contraseña débil',
-        'Te recomendamos usar una contraseña más fuerte. ¿Deseas continuar?',
+        tcp('weakPasswordWarning'),
+        tcp('weakPasswordMessage'),
         [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Continuar', onPress: () => processPasswordChange() }
+          { text: tcp('cancel'), style: 'cancel' },
+          { text: tcp('continue'), onPress: () => processPasswordChange() }
         ]
       );
       return;
@@ -180,11 +307,11 @@ const ChangePasswordScreen = ({ navigation }) => {
 
       if (response.data.success) {
         Alert.alert(
-          '¡Éxito!',
-          'Tu contraseña ha sido cambiada correctamente',
+          tcp('success'),
+          tcp('passwordChanged'),
           [
             { 
-              text: 'OK', 
+              text: tcp('ok'), 
               onPress: () => {
                 // Limpiar campos
                 setCurrentPassword('');
@@ -201,13 +328,13 @@ const ChangePasswordScreen = ({ navigation }) => {
       console.error('❌ Error cambiando contraseña:', error);
       
       if (error.response?.data?.message) {
-        Alert.alert('Error', error.response.data.message);
+        Alert.alert(tcp('error'), error.response.data.message);
       } else if (error.response?.status === 400) {
-        Alert.alert('Error', 'Contraseña actual incorrecta');
+        Alert.alert(tcp('error'), tcp('incorrectCurrentPassword'));
       } else if (error.response?.status === 404) {
-        Alert.alert('Error', 'Usuario no encontrado');
+        Alert.alert(tcp('error'), tcp('userNotFound'));
       } else {
-        Alert.alert('Error', 'No se pudo cambiar la contraseña. Inténtalo de nuevo.');
+        Alert.alert(tcp('error'), tcp('changePasswordError'));
       }
     } finally {
       setIsLoading(false);
@@ -222,8 +349,7 @@ const ChangePasswordScreen = ({ navigation }) => {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         {/* Header */}
-        <View style={[styles.header, { 
-        }]}>
+        <View style={styles.header}>
           <TouchableOpacity 
             style={[styles.backButton, { backgroundColor: colors.cardCompleted }]}
             onPress={() => navigation.goBack()}
@@ -231,7 +357,7 @@ const ChangePasswordScreen = ({ navigation }) => {
             <ArrowLeft size={24 * SCALE} color={colors.primary} />
           </TouchableOpacity>
           <Text style={[styles.title, { color: colors.text }]}>
-            Cambiar Contraseña
+            {tcp('changePassword')}
           </Text>
           <View style={styles.placeholder} />
         </View>
@@ -245,14 +371,14 @@ const ChangePasswordScreen = ({ navigation }) => {
           <View style={[styles.securityInfo, { backgroundColor: colors.cardCompleted }]}>
             <Shield size={24 * SCALE} color={colors.primary} />
             <Text style={[styles.securityText, { color: colors.textSecondary }]}>
-              Mantén tu cuenta segura con una contraseña fuerte
+              {tcp('securityMessage')}
             </Text>
           </View>
 
           {/* Contraseña actual */}
           <View style={styles.inputSection}>
             <Text style={[styles.inputLabel, { color: colors.text }]}>
-              Contraseña actual
+              {tcp('currentPassword')}
             </Text>
             <View style={[styles.passwordContainer, {
               borderColor: colors.border,
@@ -260,7 +386,7 @@ const ChangePasswordScreen = ({ navigation }) => {
             }]}>
               <TextInput
                 style={[styles.passwordInput, { color: colors.text }]}
-                placeholder="Ingresa tu contraseña actual"
+                placeholder={tcp('currentPasswordPlaceholder')}
                 placeholderTextColor={colors.placeholder}
                 value={currentPassword}
                 onChangeText={setCurrentPassword}
@@ -286,7 +412,7 @@ const ChangePasswordScreen = ({ navigation }) => {
           {/* Nueva contraseña */}
           <View style={styles.inputSection}>
             <Text style={[styles.inputLabel, { color: colors.text }]}>
-              Nueva contraseña
+              {tcp('newPassword')}
             </Text>
             <View style={[styles.passwordContainer, {
               borderColor: colors.border,
@@ -294,7 +420,7 @@ const ChangePasswordScreen = ({ navigation }) => {
             }]}>
               <TextInput
                 style={[styles.passwordInput, { color: colors.text }]}
-                placeholder="Ingresa tu nueva contraseña"
+                placeholder={tcp('newPasswordPlaceholder')}
                 placeholderTextColor={colors.placeholder}
                 value={newPassword}
                 onChangeText={setNewPassword}
@@ -340,7 +466,7 @@ const ChangePasswordScreen = ({ navigation }) => {
             {newPassword.length > 0 && (
               <View style={[styles.requirementsContainer, { backgroundColor: colors.surfaceVariant }]}>
                 <Text style={[styles.requirementsTitle, { color: colors.text }]}>
-                  Requisitos:
+                  {tcp('requirements')}
                 </Text>
                 
                 <View style={styles.requirement}>
@@ -354,7 +480,7 @@ const ChangePasswordScreen = ({ navigation }) => {
                     { color: colors.textSecondary },
                     passwordStrength.validations.length && { color: colors.success }
                   ]}>
-                    Al menos 8 caracteres
+                    {tcp('atLeast8Chars')}
                   </Text>
                 </View>
 
@@ -369,7 +495,7 @@ const ChangePasswordScreen = ({ navigation }) => {
                     { color: colors.textSecondary },
                     passwordStrength.validations.uppercase && { color: colors.success }
                   ]}>
-                    Una letra mayúscula
+                    {tcp('oneUppercase')}
                   </Text>
                 </View>
 
@@ -384,7 +510,7 @@ const ChangePasswordScreen = ({ navigation }) => {
                     { color: colors.textSecondary },
                     passwordStrength.validations.lowercase && { color: colors.success }
                   ]}>
-                    Una letra minúscula
+                    {tcp('oneLowercase')}
                   </Text>
                 </View>
 
@@ -399,7 +525,7 @@ const ChangePasswordScreen = ({ navigation }) => {
                     { color: colors.textSecondary },
                     passwordStrength.validations.number && { color: colors.success }
                   ]}>
-                    Un número
+                    {tcp('oneNumber')}
                   </Text>
                 </View>
 
@@ -414,7 +540,7 @@ const ChangePasswordScreen = ({ navigation }) => {
                     { color: colors.textSecondary },
                     passwordStrength.validations.special && { color: colors.success }
                   ]}>
-                    Un carácter especial (!@#$%^&*)
+                    {tcp('oneSpecialChar')}
                   </Text>
                 </View>
               </View>
@@ -424,7 +550,7 @@ const ChangePasswordScreen = ({ navigation }) => {
           {/* Confirmar contraseña */}
           <View style={styles.inputSection}>
             <Text style={[styles.inputLabel, { color: colors.text }]}>
-              Confirmar nueva contraseña
+              {tcp('confirmPassword')}
             </Text>
             <View style={[styles.passwordContainer, {
               borderColor: colors.border,
@@ -432,7 +558,7 @@ const ChangePasswordScreen = ({ navigation }) => {
             }]}>
               <TextInput
                 style={[styles.passwordInput, { color: colors.text }]}
-                placeholder="Confirma tu nueva contraseña"
+                placeholder={tcp('confirmPasswordPlaceholder')}
                 placeholderTextColor={colors.placeholder}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
@@ -461,14 +587,14 @@ const ChangePasswordScreen = ({ navigation }) => {
                   <View style={styles.matchSuccess}>
                     <Check size={14 * SCALE} color={colors.success} />
                     <Text style={[styles.matchSuccessText, { color: colors.success }]}>
-                      Las contraseñas coinciden
+                      {tcp('passwordsMatch')}
                     </Text>
                   </View>
                 ) : (
                   <View style={styles.matchError}>
                     <AlertCircle size={14 * SCALE} color={colors.error} />
                     <Text style={[styles.matchErrorText, { color: colors.error }]}>
-                      Las contraseñas no coinciden
+                      {tcp('passwordsNoMatch')}
                     </Text>
                   </View>
                 )}
@@ -479,19 +605,19 @@ const ChangePasswordScreen = ({ navigation }) => {
           {/* Consejos de seguridad */}
           <View style={[styles.tipsContainer, { backgroundColor: colors.surfaceVariant }]}>
             <Text style={[styles.tipsTitle, { color: colors.text }]}>
-              💡 Consejos de seguridad:
+              {tcp('securityTips')}
             </Text>
             <Text style={[styles.tipText, { color: colors.textSecondary }]}>
-              • Usa una combinación de letras, números y símbolos
+              {tcp('tip1')}
             </Text>
             <Text style={[styles.tipText, { color: colors.textSecondary }]}>
-              • Evita información personal como nombres o fechas
+              {tcp('tip2')}
             </Text>
             <Text style={[styles.tipText, { color: colors.textSecondary }]}>
-              • No reutilices contraseñas de otras cuentas
+              {tcp('tip3')}
             </Text>
             <Text style={[styles.tipText, { color: colors.textSecondary }]}>
-              • Cambia tu contraseña regularmente
+              {tcp('tip4')}
             </Text>
           </View>
         </ScrollView>
@@ -522,12 +648,12 @@ const ChangePasswordScreen = ({ navigation }) => {
             {isLoading ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator color="#fff" size="small" />
-                <Text style={styles.changeButtonText}>Cambiando...</Text>
+                <Text style={styles.changeButtonText}>{tcp('changing')}</Text>
               </View>
             ) : (
               <>
                 <Lock size={18 * SCALE} color="#fff" />
-                <Text style={styles.changeButtonText}>Cambiar Contraseña</Text>
+                <Text style={styles.changeButtonText}>{tcp('changePassword')}</Text>
               </>
             )}
           </TouchableOpacity>

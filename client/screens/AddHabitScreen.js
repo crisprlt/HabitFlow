@@ -65,14 +65,231 @@ import {
 } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from './ThemeContext';
+import { useLanguage } from './LanguageContext';
 import api from '../services/api';
 import * as SecureStore from 'expo-secure-store';
 
 const SCALE = 1.2;
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+// Textos de la aplicación en español e inglés
+const translations = {
+    es: {
+        // Header
+        editHabit: 'Editar Hábito',
+        newHabit: 'Nuevo Hábito',
+        
+        // Loading
+        verifyingSession: 'Verificando sesión...',
+        noUserSession: 'No se encontró sesión de usuario',
+        goToLogin: 'Ir a Login',
+        
+        // Basic Info
+        basicInfo: 'Información Básica',
+        habitName: 'Nombre del Hábito',
+        habitNameRequired: 'Nombre del Hábito *',
+        habitNamePlaceholder: 'Ej: Leer 30 minutos',
+        description: 'Descripción',
+        descriptionPlaceholder: 'Describe tu hábito...',
+        
+        // Icon
+        icon: 'Icono',
+        iconRequired: 'Icono *',
+        iconCategories: {
+            'health': 'Salud y Fitness',
+            'education': 'Educación',
+            'work': 'Trabajo',
+            'lifestyle': 'Estilo de Vida',
+            'entertainment': 'Entretenimiento'
+        },
+        
+        // Category
+        category: 'Categoría',
+        categoryRequired: 'Categoría *',
+        manage: 'Gestionar',
+        
+        // Goals
+        goalsAndTargets: 'Meta y Objetivos',
+        unitOfMeasure: 'Unidad de Medida',
+        
+        // Frequency
+        frequency: 'Frecuencia',
+        frequencyRequired: 'Frecuencia *',
+        
+        // Reminders
+        reminders: 'Recordatorios',
+        enableReminders: 'Activar recordatorios',
+        
+        // Additional Notes
+        additionalNotes: 'Notas Adicionales',
+        notesPlaceholder: 'Notas sobre este hábito...',
+        
+        // Modals
+        manageCategories: 'Gestionar Categorías',
+        manageFrequencies: 'Gestionar Frecuencias',
+        manageUnits: 'Gestionar Unidades',
+        addNew: 'Agregar nuevo',
+        existing: 'existentes',
+        addNewCategory: 'Agregar nueva categoría',
+        addNewFrequency: 'Agregar nueva frecuencia',
+        addNewUnit: 'Agregar nueva unidad',
+        categoryNamePlaceholder: 'Nombre de la categoría',
+        frequencyNamePlaceholder: 'Nombre de la frecuencia',
+        unitNamePlaceholder: 'Nombre de la unidad',
+        newName: 'Nuevo nombre',
+        noAvailable: 'No hay',
+        available: 'disponibles',
+        addOneNew: 'Agrega uno nuevo usando el formulario de arriba',
+        
+        // Validation messages
+        enterName: 'Por favor ingresa un nombre para el hábito',
+        selectIcon: 'Por favor selecciona un icono',
+        selectCategory: 'Por favor selecciona una categoría',
+        enterNameForItem: 'Por favor ingresa un nombre',
+        
+        // Success/Error messages
+        success: '¡Éxito!',
+        error: 'Error',
+        habitCreated: 'Hábito creado correctamente',
+        habitUpdated: 'Hábito actualizado correctamente',
+        elementCreated: 'creado exitosamente',
+        elementUpdated: 'Elemento actualizado exitosamente',
+        elementDeleted: 'Elemento eliminado',
+        errorSaving: 'Error al guardar el hábito',
+        errorCreating: 'Error al crear',
+        errorEditing: 'Error al editar',
+        errorDeleting: 'No se pudo eliminar el elemento',
+        errorLoadingData: 'No se pudieron cargar los datos iniciales',
+        
+        // Delete confirmations
+        confirmDelete: 'Confirmar eliminación',
+        confirmDeleteElement: '¿Estás seguro de que quieres eliminar este elemento?',
+        deleteHabit: 'Eliminar Hábito',
+        confirmDeleteHabit: '¿Estás seguro de que quieres eliminar este hábito? Esta acción no se puede deshacer.',
+        deleted: '¡Eliminado!',
+        habitDeleted: 'El hábito ha sido eliminado correctamente',
+        cancel: 'Cancelar',
+        delete: 'Eliminar',
+        
+        // Session
+        sessionExpired: 'Sesión expirada',
+        loginAgain: 'Por favor, inicia sesión nuevamente',
+        errorGettingUser: 'Error al obtener información de usuario',
+        ok: 'OK'
+    },
+    en: {
+        // Header
+        editHabit: 'Edit Habit',
+        newHabit: 'New Habit',
+        
+        // Loading
+        verifyingSession: 'Verifying session...',
+        noUserSession: 'No user session found',
+        goToLogin: 'Go to Login',
+        
+        // Basic Info
+        basicInfo: 'Basic Information',
+        habitName: 'Habit Name',
+        habitNameRequired: 'Habit Name *',
+        habitNamePlaceholder: 'Ex: Read 30 minutes',
+        description: 'Description',
+        descriptionPlaceholder: 'Describe your habit...',
+        
+        // Icon
+        icon: 'Icon',
+        iconRequired: 'Icon *',
+        iconCategories: {
+            'health': 'Health & Fitness',
+            'education': 'Education',
+            'work': 'Work',
+            'lifestyle': 'Lifestyle',
+            'entertainment': 'Entertainment'
+        },
+        
+        // Category
+        category: 'Category',
+        categoryRequired: 'Category *',
+        manage: 'Manage',
+        
+        // Goals
+        goalsAndTargets: 'Goals and Targets',
+        unitOfMeasure: 'Unit of Measure',
+        
+        // Frequency
+        frequency: 'Frequency',
+        frequencyRequired: 'Frequency *',
+        
+        // Reminders
+        reminders: 'Reminders',
+        enableReminders: 'Enable reminders',
+        
+        // Additional Notes
+        additionalNotes: 'Additional Notes',
+        notesPlaceholder: 'Notes about this habit...',
+        
+        // Modals
+        manageCategories: 'Manage Categories',
+        manageFrequencies: 'Manage Frequencies',
+        manageUnits: 'Manage Units',
+        addNew: 'Add new',
+        existing: 'existing',
+        addNewCategory: 'Add new category',
+        addNewFrequency: 'Add new frequency',
+        addNewUnit: 'Add new unit',
+        categoryNamePlaceholder: 'Category name',
+        frequencyNamePlaceholder: 'Frequency name',
+        unitNamePlaceholder: 'Unit name',
+        newName: 'New name',
+        noAvailable: 'No',
+        available: 'available',
+        addOneNew: 'Add a new one using the form above',
+        
+        // Validation messages
+        enterName: 'Please enter a name for the habit',
+        selectIcon: 'Please select an icon',
+        selectCategory: 'Please select a category',
+        enterNameForItem: 'Please enter a name',
+        
+        // Success/Error messages
+        success: 'Success!',
+        error: 'Error',
+        habitCreated: 'Habit created successfully',
+        habitUpdated: 'Habit updated successfully',
+        elementCreated: 'created successfully',
+        elementUpdated: 'Element updated successfully',
+        elementDeleted: 'Element deleted',
+        errorSaving: 'Error saving habit',
+        errorCreating: 'Error creating',
+        errorEditing: 'Error editing',
+        errorDeleting: 'Could not delete element',
+        errorLoadingData: 'Could not load initial data',
+        
+        // Delete confirmations
+        confirmDelete: 'Confirm deletion',
+        confirmDeleteElement: 'Are you sure you want to delete this element?',
+        deleteHabit: 'Delete Habit',
+        confirmDeleteHabit: 'Are you sure you want to delete this habit? This action cannot be undone.',
+        deleted: 'Deleted!',
+        habitDeleted: 'The habit has been deleted successfully',
+        cancel: 'Cancel',
+        delete: 'Delete',
+        
+        // Session
+        sessionExpired: 'Session expired',
+        loginAgain: 'Please log in again',
+        errorGettingUser: 'Error getting user information',
+        ok: 'OK'
+    }
+};
+
 const AddHabitScreen = ({ navigation, route }) => {
     const { colors } = useTheme();
+    const { currentLanguage } = useLanguage();
+    
+    // Función para obtener texto traducido
+    const t = (key) => {
+        return translations[currentLanguage]?.[key] || translations['en'][key] || key;
+    };
     
     // Estados para el teclado
     const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -133,11 +350,11 @@ const AddHabitScreen = ({ navigation, route }) => {
                 } else {
                     console.log('❌ No se encontró user_id en SecureStore');
                     Alert.alert(
-                        'Sesión expirada',
-                        'Por favor, inicia sesión nuevamente',
+                        t('sessionExpired'),
+                        t('loginAgain'),
                         [
                             {
-                                text: 'OK',
+                                text: t('ok'),
                                 onPress: () => navigation.navigate('Login')
                             }
                         ]
@@ -145,7 +362,7 @@ const AddHabitScreen = ({ navigation, route }) => {
                 }
             } catch (error) {
                 console.error('❌ Error obteniendo userId del storage:', error);
-                Alert.alert('Error', 'Error al obtener información de usuario');
+                Alert.alert(t('error'), t('errorGettingUser'));
             } finally {
                 setUserIdLoading(false);
             }
@@ -185,7 +402,7 @@ const AddHabitScreen = ({ navigation, route }) => {
 
     // Iconos organizados eficientemente
     const iconCategories = {
-        'Salud y Fitness': [
+        [t('iconCategories.health')]: [
             { icon: Activity, name: 'Ejercicio' },
             { icon: Heart, name: 'Cardio' },
             { icon: Dumbbell, name: 'Fuerza' },
@@ -195,7 +412,7 @@ const AddHabitScreen = ({ navigation, route }) => {
             { icon: Brain, name: 'Mental' },
             { icon: TrendingUp, name: 'Progreso' }
         ],
-        'Educación': [
+        [t('iconCategories.education')]: [
             { icon: BookOpen, name: 'Lectura' },
             { icon: GraduationCap, name: 'Estudio' },
             { icon: PenTool, name: 'Escritura' },
@@ -203,13 +420,13 @@ const AddHabitScreen = ({ navigation, route }) => {
             { icon: Monitor, name: 'Cursos' },
             { icon: Brain, name: 'Aprendizaje' }
         ],
-        'Trabajo': [
+        [t('iconCategories.work')]: [
             { icon: Briefcase, name: 'Trabajo' },
             { icon: Target, name: 'Objetivos' },
             { icon: Clock, name: 'Tiempo' },
             { icon: DollarSign, name: 'Finanzas' }
         ],
-        'Estilo de Vida': [
+        [t('iconCategories.lifestyle')]: [
             { icon: Home, name: 'Casa' },
             { icon: Utensils, name: 'Cocina' },
             { icon: Coffee, name: 'Café' },
@@ -218,7 +435,7 @@ const AddHabitScreen = ({ navigation, route }) => {
             { icon: Sun, name: 'Mañana' },
             { icon: Smile, name: 'Felicidad' }
         ],
-        'Entretenimiento': [
+        [t('iconCategories.entertainment')]: [
             { icon: Music, name: 'Música' },
             { icon: Camera, name: 'Fotografía' },
             { icon: Gamepad2, name: 'Juegos' },
@@ -263,17 +480,17 @@ const AddHabitScreen = ({ navigation, route }) => {
             
             if (error.response?.status === 401) {
                 Alert.alert(
-                    'Sesión expirada',
-                    'Por favor, inicia sesión nuevamente',
+                    t('sessionExpired'),
+                    t('loginAgain'),
                     [
                         {
-                            text: 'OK',
+                            text: t('ok'),
                             onPress: () => navigation.navigate('Login')
                         }
                     ]
                 );
             } else {
-                Alert.alert('Error', 'No se pudieron cargar los datos iniciales');
+                Alert.alert(t('error'), t('errorLoadingData'));
             }
         }
     };
@@ -281,7 +498,7 @@ const AddHabitScreen = ({ navigation, route }) => {
     // Crear nuevo elemento (categoría, frecuencia o unidad)
     const createNewItem = async (type, name) => {
         if (!name.trim() || !userId) {
-            Alert.alert('Error', 'Por favor ingresa un nombre');
+            Alert.alert(t('error'), t('enterNameForItem'));
             return;
         }
 
@@ -299,12 +516,12 @@ const AddHabitScreen = ({ navigation, route }) => {
 
                 setNewItemName('');
                 closeAllModals();
-                Alert.alert('Éxito', `${type.slice(0, -1)} creado exitosamente`);
+                Alert.alert(t('success'), `${type.slice(0, -1)} ${t('elementCreated')}`);
             }
         } catch (error) {
             console.error(`Error creando ${type}:`, error);
-            const message = error.response?.data?.message || `Error al crear ${type}`;
-            Alert.alert('Error', message);
+            const message = error.response?.data?.message || `${t('errorCreating')} ${type}`;
+            Alert.alert(t('error'), message);
         } finally {
             setIsLoading(false);
         }
@@ -313,7 +530,7 @@ const AddHabitScreen = ({ navigation, route }) => {
     // Editar elemento existente
     const editItem = async (type, id, newName) => {
         if (!newName.trim() || !userId) {
-            Alert.alert('Error', 'Por favor ingresa un nombre');
+            Alert.alert(t('error'), t('enterNameForItem'));
             return;
         }
 
@@ -326,12 +543,12 @@ const AddHabitScreen = ({ navigation, route }) => {
                 await loadInitialData();
                 setEditingItem(null);
                 setEditItemName('');
-                Alert.alert('Éxito', 'Elemento actualizado exitosamente');
+                Alert.alert(t('success'), t('elementUpdated'));
             }
         } catch (error) {
             console.error(`Error editando ${type}:`, error);
-            const message = error.response?.data?.message || `Error al editar ${type}`;
-            Alert.alert('Error', message);
+            const message = error.response?.data?.message || `${t('errorEditing')} ${type}`;
+            Alert.alert(t('error'), message);
         } finally {
             setIsLoading(false);
         }
@@ -354,20 +571,20 @@ const AddHabitScreen = ({ navigation, route }) => {
         if (!userId) return;
 
         Alert.alert(
-            'Confirmar eliminación',
-            '¿Estás seguro de que quieres eliminar este elemento?',
+            t('confirmDelete'),
+            t('confirmDeleteElement'),
             [
-                { text: 'Cancelar', style: 'cancel' },
+                { text: t('cancel'), style: 'cancel' },
                 {
-                    text: 'Eliminar',
+                    text: t('delete'),
                     style: 'destructive',
                     onPress: async () => {
                         try {
                             await api.delete(`/api/habit/${type}/${id}`);
                             await loadInitialData();
-                            Alert.alert('Éxito', 'Elemento eliminado');
+                            Alert.alert(t('success'), t('elementDeleted'));
                         } catch (error) {
-                            Alert.alert('Error', 'No se pudo eliminar el elemento');
+                            Alert.alert(t('error'), t('errorDeleting'));
                         }
                     }
                 }
@@ -380,12 +597,12 @@ const AddHabitScreen = ({ navigation, route }) => {
         if (!userId) return;
 
         Alert.alert(
-            'Eliminar Hábito',
-            '¿Estás seguro de que quieres eliminar este hábito? Esta acción no se puede deshacer.',
+            t('deleteHabit'),
+            t('confirmDeleteHabit'),
             [
-                { text: 'Cancelar', style: 'cancel' },
+                { text: t('cancel'), style: 'cancel' },
                 {
-                    text: 'Eliminar',
+                    text: t('delete'),
                     style: 'destructive',
                     onPress: async () => {
                         try {
@@ -393,13 +610,13 @@ const AddHabitScreen = ({ navigation, route }) => {
                             const response = await api.delete(`/api/habit/delete/${habitToEdit.id_habito}`);
                             
                             if (response.data.success) {
-                                Alert.alert('¡Eliminado!', 'El hábito ha sido eliminado correctamente', [
-                                    { text: 'OK', onPress: () => navigation.goBack() }
+                                Alert.alert(t('deleted'), t('habitDeleted'), [
+                                    { text: t('ok'), onPress: () => navigation.goBack() }
                                 ]);
                             }
                         } catch (error) {
                             console.error('Error eliminando hábito:', error);
-                            Alert.alert('Error', 'No se pudo eliminar el hábito');
+                            Alert.alert(t('error'), t('errorDeleting'));
                         } finally {
                             setIsLoading(false);
                         }
@@ -426,23 +643,23 @@ const AddHabitScreen = ({ navigation, route }) => {
 
     const validateAndSave = async () => {
         if (!userId) {
-            Alert.alert('Error', 'No se encontró información de usuario');
+            Alert.alert(t('error'), t('errorGettingUser'));
             return;
         }
 
         // Validaciones
         if (!habitName.trim()) {
-            Alert.alert('Error', 'Por favor ingresa un nombre para el hábito');
+            Alert.alert(t('error'), t('enterName'));
             return;
         }
 
         if (!selectedIcon) {
-            Alert.alert('Error', 'Por favor selecciona un icono');
+            Alert.alert(t('error'), t('selectIcon'));
             return;
         }
 
         if (!selectedCategory) {
-            Alert.alert('Error', 'Por favor selecciona una categoría');
+            Alert.alert(t('error'), t('selectCategory'));
             return;
         }
 
@@ -473,9 +690,9 @@ const AddHabitScreen = ({ navigation, route }) => {
             }
 
             if (response.data.success) {
-                const message = isEditing ? 'Hábito actualizado correctamente' : 'Hábito creado correctamente';
-                Alert.alert('¡Éxito!', message, [
-                    { text: 'OK', onPress: () => navigation.goBack() }
+                const message = isEditing ? t('habitUpdated') : t('habitCreated');
+                Alert.alert(t('success'), message, [
+                    { text: t('ok'), onPress: () => navigation.goBack() }
                 ]);
             }
         } catch (error) {
@@ -483,18 +700,18 @@ const AddHabitScreen = ({ navigation, route }) => {
             
             if (error.response?.status === 401) {
                 Alert.alert(
-                    'Sesión expirada',
-                    'Por favor, inicia sesión nuevamente',
+                    t('sessionExpired'),
+                    t('loginAgain'),
                     [
                         {
-                            text: 'OK',
+                            text: t('ok'),
                             onPress: () => navigation.navigate('Login')
                         }
                     ]
                 );
             } else {
-                const message = error.response?.data?.message || 'Error al guardar el hábito';
-                Alert.alert('Error', message);
+                const message = error.response?.data?.message || t('errorSaving');
+                Alert.alert(t('error'), message);
             }
         } finally {
             setIsLoading(false);
@@ -507,7 +724,7 @@ const AddHabitScreen = ({ navigation, route }) => {
             <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
                 <ActivityIndicator size="large" color={colors.primary} />
                 <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-                    Verificando sesión...
+                    {t('verifyingSession')}
                 </Text>
             </View>
         );
@@ -518,202 +735,232 @@ const AddHabitScreen = ({ navigation, route }) => {
         return (
             <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
                 <Text style={[styles.errorText, { color: colors.error }]}>
-                    No se encontró sesión de usuario
+                    {t('noUserSession')}
                 </Text>
                 <TouchableOpacity
                     style={[styles.retryButton, { backgroundColor: colors.primary }]}
                     onPress={() => navigation.navigate('Login')}
                 >
-                    <Text style={styles.retryButtonText}>Ir a Login</Text>
+                    <Text style={styles.retryButtonText}>{t('goToLogin')}</Text>
                 </TouchableOpacity>
             </View>
         );
     }
 
     // Modal mejorado para mantenimiento de elementos con scroll optimizado
-    const renderMaintenanceModal = (title, items, type, showModal, setShowModal) => (
-        <Modal
-            visible={showModal}
-            animationType="slide"
-            transparent={true}
-            onRequestClose={() => setShowModal(false)}
-            statusBarTranslucent={true}
-        >
-            <View style={styles.modalOverlay}>
-                <TouchableWithoutFeedback onPress={() => setShowModal(false)}>
-                    <View style={styles.modalBackdrop} />
-                </TouchableWithoutFeedback>
-                
-                <KeyboardAvoidingView 
-                    style={styles.modalKeyboardView} 
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 25}
-                >
-                    <View style={[styles.modalContainer, { backgroundColor: colors.surface }]}>
-                        {/* Header del modal - Fijo */}
-                        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-                            <Text style={[styles.modalTitle, { color: colors.text }]}>
-                                Gestionar {title}
-                            </Text>
-                            <TouchableOpacity 
-                                onPress={() => setShowModal(false)}
-                                style={[styles.closeButton, { backgroundColor: colors.surfaceVariant }]}
-                                activeOpacity={0.7}
+    const renderMaintenanceModal = (title, items, type, showModal, setShowModal) => {
+        // Obtener texto traducido para placeholders y títulos
+        const getModalTitle = () => {
+            switch(type) {
+                case 'categories': return t('manageCategories');
+                case 'frequencies': return t('manageFrequencies');
+                case 'units': return t('manageUnits');
+                default: return title;
+            }
+        };
+
+        const getAddNewTitle = () => {
+            switch(type) {
+                case 'categories': return t('addNewCategory');
+                case 'frequencies': return t('addNewFrequency');
+                case 'units': return t('addNewUnit');
+                default: return `${t('addNew')} ${title.toLowerCase()}`;
+            }
+        };
+
+        const getPlaceholder = () => {
+            switch(type) {
+                case 'categories': return t('categoryNamePlaceholder');
+                case 'frequencies': return t('frequencyNamePlaceholder');
+                case 'units': return t('unitNamePlaceholder');
+                default: return `${title} name`;
+            }
+        };
+
+        return (
+            <Modal
+                visible={showModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowModal(false)}
+                statusBarTranslucent={true}
+            >
+                <View style={styles.modalOverlay}>
+                    <TouchableWithoutFeedback onPress={() => setShowModal(false)}>
+                        <View style={styles.modalBackdrop} />
+                    </TouchableWithoutFeedback>
+                    
+                    <KeyboardAvoidingView 
+                        style={styles.modalKeyboardView} 
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 25}
+                    >
+                        <View style={[styles.modalContainer, { backgroundColor: colors.surface }]}>
+                            {/* Header del modal - Fijo */}
+                            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+                                <Text style={[styles.modalTitle, { color: colors.text }]}>
+                                    {getModalTitle()}
+                                </Text>
+                                <TouchableOpacity 
+                                    onPress={() => setShowModal(false)}
+                                    style={[styles.closeButton, { backgroundColor: colors.surfaceVariant }]}
+                                    activeOpacity={0.7}
+                                >
+                                    <X size={20} color={colors.textSecondary} />
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Contenido scrolleable */}
+                            <ScrollView 
+                                style={styles.modalScrollContainer}
+                                contentContainerStyle={styles.modalScrollContent}
+                                keyboardShouldPersistTaps="handled"
+                                showsVerticalScrollIndicator={true}
+                                bounces={true}
+                                overScrollMode="always"
+                                nestedScrollEnabled={true}
                             >
-                                <X size={20} color={colors.textSecondary} />
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* Contenido scrolleable */}
-                        <ScrollView 
-                            style={styles.modalScrollContainer}
-                            contentContainerStyle={styles.modalScrollContent}
-                            keyboardShouldPersistTaps="handled"
-                            showsVerticalScrollIndicator={true}
-                            bounces={true}
-                            overScrollMode="always"
-                            nestedScrollEnabled={true}
-                        >
-                            {/* Sección para agregar nuevo elemento */}
-                            <View style={[styles.addNewSection, { borderBottomColor: colors.border }]}>
-                                <Text style={[styles.addNewTitle, { color: colors.textSecondary }]}>
-                                    Agregar nuevo {title.toLowerCase().slice(0, -1)}
-                                </Text>
-                                <View style={styles.addNewInput}>
-                                    <TextInput
-                                        style={[styles.modalInput, { 
-                                            borderColor: colors.border,
-                                            backgroundColor: colors.input,
-                                            color: colors.text,
-                                            flex: 1
-                                        }]}
-                                        value={newItemName}
-                                        onChangeText={setNewItemName}
-                                        placeholder={`Nombre del ${title.toLowerCase().slice(0, -1)}`}
-                                        placeholderTextColor={colors.placeholder}
-                                        returnKeyType="done"
-                                        onSubmitEditing={() => createNewItem(type, newItemName)}
-                                        blurOnSubmit={false}
-                                    />
-                                    <TouchableOpacity
-                                        style={[styles.addButton, { backgroundColor: colors.primary }]}
-                                        onPress={() => createNewItem(type, newItemName)}
-                                        disabled={isLoading}
-                                        activeOpacity={0.7}
-                                    >
-                                        <Plus size={24} color="#fff" />
-                                    </TouchableOpacity>
+                                {/* Sección para agregar nuevo elemento */}
+                                <View style={[styles.addNewSection, { borderBottomColor: colors.border }]}>
+                                    <Text style={[styles.addNewTitle, { color: colors.textSecondary }]}>
+                                        {getAddNewTitle()}
+                                    </Text>
+                                    <View style={styles.addNewInput}>
+                                        <TextInput
+                                            style={[styles.modalInput, { 
+                                                borderColor: colors.border,
+                                                backgroundColor: colors.input,
+                                                color: colors.text,
+                                                flex: 1
+                                            }]}
+                                            value={newItemName}
+                                            onChangeText={setNewItemName}
+                                            placeholder={getPlaceholder()}
+                                            placeholderTextColor={colors.placeholder}
+                                            returnKeyType="done"
+                                            onSubmitEditing={() => createNewItem(type, newItemName)}
+                                            blurOnSubmit={false}
+                                        />
+                                        <TouchableOpacity
+                                            style={[styles.addButton, { backgroundColor: colors.primary }]}
+                                            onPress={() => createNewItem(type, newItemName)}
+                                            disabled={isLoading}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Plus size={24} color="#fff" />
+                                        </TouchableOpacity>
+                                    </View>
                                 </View>
-                            </View>
 
-                            {/* Lista de elementos existentes */}
-                            <View style={styles.itemsListContainer}>
-                                <Text style={[styles.itemsListTitle, { color: colors.textSecondary }]}>
-                                    {title} existentes ({items.length})
-                                </Text>
-                                
-                                {items.length === 0 ? (
-                                    <View style={styles.emptyState}>
-                                        <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
-                                            No hay {title.toLowerCase()} disponibles
-                                        </Text>
-                                        <Text style={[styles.emptyStateSubtext, { color: colors.placeholder }]}>
-                                            Agrega uno nuevo usando el formulario de arriba
-                                        </Text>
-                                    </View>
-                                ) : (
-                                    <View style={styles.itemsContainer}>
-                                        {items.map((item, index) => {
-                                            const itemId = item.id_categoria || item.id_frecuencia || item.id_unidad_medida;
-                                            const isEditingThisItem = editingItem && (
-                                                editingItem.id_categoria === itemId || 
-                                                editingItem.id_frecuencia === itemId || 
-                                                editingItem.id_unidad_medida === itemId
-                                            );
-                                            
-                                            return (
-                                                <View 
-                                                    key={itemId}
-                                                    style={[
-                                                        styles.itemRow, 
-                                                        { 
-                                                            borderBottomColor: colors.border,
-                                                            backgroundColor: index % 2 === 0 ? colors.background + '30' : 'transparent'
-                                                        }
-                                                    ]}
-                                                >
-                                                    {isEditingThisItem ? (
-                                                        <View style={styles.editingRow}>
-                                                            <TextInput
-                                                                style={[styles.editInput, {
-                                                                    borderColor: colors.border,
-                                                                    backgroundColor: colors.input,
-                                                                    color: colors.text,
-                                                                    flex: 1
-                                                                }]}
-                                                                value={editItemName}
-                                                                onChangeText={setEditItemName}
-                                                                placeholder="Nuevo nombre"
-                                                                placeholderTextColor={colors.placeholder}
-                                                                autoFocus
-                                                                returnKeyType="done"
-                                                                onSubmitEditing={() => editItem(type, itemId, editItemName)}
-                                                                blurOnSubmit={false}
-                                                            />
-                                                            <View style={styles.editActions}>
-                                                                <TouchableOpacity
-                                                                    style={[styles.actionButton, { backgroundColor: colors.surfaceVariant }]}
-                                                                    onPress={cancelEditItem}
-                                                                    activeOpacity={0.7}
-                                                                >
-                                                                    <X size={18} color={colors.textSecondary} />
-                                                                </TouchableOpacity>
-                                                                <TouchableOpacity
-                                                                    style={[styles.actionButton, { backgroundColor: colors.primary + '20' }]}
-                                                                    onPress={() => editItem(type, itemId, editItemName)}
-                                                                    activeOpacity={0.7}
-                                                                >
-                                                                    <Check size={18} color={colors.primary} />
-                                                                </TouchableOpacity>
+                                {/* Lista de elementos existentes */}
+                                <View style={styles.itemsListContainer}>
+                                    <Text style={[styles.itemsListTitle, { color: colors.textSecondary }]}>
+                                        {title} {t('existing')} ({items.length})
+                                    </Text>
+                                    
+                                    {items.length === 0 ? (
+                                        <View style={styles.emptyState}>
+                                            <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
+                                                {t('noAvailable')} {title.toLowerCase()} {t('available')}
+                                            </Text>
+                                            <Text style={[styles.emptyStateSubtext, { color: colors.placeholder }]}>
+                                                {t('addOneNew')}
+                                            </Text>
+                                        </View>
+                                    ) : (
+                                        <View style={styles.itemsContainer}>
+                                            {items.map((item, index) => {
+                                                const itemId = item.id_categoria || item.id_frecuencia || item.id_unidad_medida;
+                                                const isEditingThisItem = editingItem && (
+                                                    editingItem.id_categoria === itemId || 
+                                                    editingItem.id_frecuencia === itemId || 
+                                                    editingItem.id_unidad_medida === itemId
+                                                );
+                                                
+                                                return (
+                                                    <View 
+                                                        key={itemId}
+                                                        style={[
+                                                            styles.itemRow, 
+                                                            { 
+                                                                borderBottomColor: colors.border,
+                                                                backgroundColor: index % 2 === 0 ? colors.background + '30' : 'transparent'
+                                                            }
+                                                        ]}
+                                                    >
+                                                        {isEditingThisItem ? (
+                                                            <View style={styles.editingRow}>
+                                                                <TextInput
+                                                                    style={[styles.editInput, {
+                                                                        borderColor: colors.border,
+                                                                        backgroundColor: colors.input,
+                                                                        color: colors.text,
+                                                                        flex: 1
+                                                                    }]}
+                                                                    value={editItemName}
+                                                                    onChangeText={setEditItemName}
+                                                                    placeholder={t('newName')}
+                                                                    placeholderTextColor={colors.placeholder}
+                                                                    autoFocus
+                                                                    returnKeyType="done"
+                                                                    onSubmitEditing={() => editItem(type, itemId, editItemName)}
+                                                                    blurOnSubmit={false}
+                                                                />
+                                                                <View style={styles.editActions}>
+                                                                    <TouchableOpacity
+                                                                        style={[styles.actionButton, { backgroundColor: colors.surfaceVariant }]}
+                                                                        onPress={cancelEditItem}
+                                                                        activeOpacity={0.7}
+                                                                    >
+                                                                        <X size={18} color={colors.textSecondary} />
+                                                                    </TouchableOpacity>
+                                                                    <TouchableOpacity
+                                                                        style={[styles.actionButton, { backgroundColor: colors.primary + '20' }]}
+                                                                        onPress={() => editItem(type, itemId, editItemName)}
+                                                                        activeOpacity={0.7}
+                                                                    >
+                                                                        <Check size={18} color={colors.primary} />
+                                                                    </TouchableOpacity>
+                                                                </View>
                                                             </View>
-                                                        </View>
-                                                    ) : (
-                                                        <>
-                                                            <View style={styles.itemInfo}>
-                                                                <Text style={[styles.itemText, { color: colors.text }]}>
-                                                                    {item.descripcion}
-                                                                </Text>
-                                                            </View>
-                                                            <View style={styles.itemActions}>
-                                                                <TouchableOpacity
-                                                                    style={[styles.actionButton, { backgroundColor: colors.primary + '15' }]}
-                                                                    onPress={() => startEditItem(item)}
-                                                                    activeOpacity={0.7}
-                                                                >
-                                                                    <Edit3 size={18} color={colors.primary} />
-                                                                </TouchableOpacity>
-                                                                <TouchableOpacity
-                                                                    style={[styles.actionButton, { backgroundColor: colors.error + '15' }]}
-                                                                    onPress={() => deleteItem(type, itemId)}
-                                                                    activeOpacity={0.7}
-                                                                >
-                                                                    <Trash2 size={18} color={colors.error} />
-                                                                </TouchableOpacity>
-                                                            </View>
-                                                        </>
-                                                    )}
-                                                </View>
-                                            );
-                                        })}
-                                    </View>
-                                )}
-                            </View>
-                        </ScrollView>
-                    </View>
-                </KeyboardAvoidingView>
-            </View>
-        </Modal>
-    );
+                                                        ) : (
+                                                            <>
+                                                                <View style={styles.itemInfo}>
+                                                                    <Text style={[styles.itemText, { color: colors.text }]}>
+                                                                        {item.descripcion}
+                                                                    </Text>
+                                                                </View>
+                                                                <View style={styles.itemActions}>
+                                                                    <TouchableOpacity
+                                                                        style={[styles.actionButton, { backgroundColor: colors.primary + '15' }]}
+                                                                        onPress={() => startEditItem(item)}
+                                                                        activeOpacity={0.7}
+                                                                    >
+                                                                        <Edit3 size={18} color={colors.primary} />
+                                                                    </TouchableOpacity>
+                                                                    <TouchableOpacity
+                                                                        style={[styles.actionButton, { backgroundColor: colors.error + '15' }]}
+                                                                        onPress={() => deleteItem(type, itemId)}
+                                                                        activeOpacity={0.7}
+                                                                    >
+                                                                        <Trash2 size={18} color={colors.error} />
+                                                                    </TouchableOpacity>
+                                                                </View>
+                                                            </>
+                                                        )}
+                                                    </View>
+                                                );
+                                            })}
+                                        </View>
+                                    )}
+                                </View>
+                            </ScrollView>
+                        </View>
+                    </KeyboardAvoidingView>
+                </View>
+            </Modal>
+        );
+    };
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -726,7 +973,7 @@ const AddHabitScreen = ({ navigation, route }) => {
                     <ArrowLeft size={24 * SCALE} color={colors.primary} />
                 </TouchableOpacity>
                 <Text style={[styles.title, { color: colors.text }]}>
-                    {isEditing ? 'Editar Hábito' : 'Nuevo Hábito'}
+                    {isEditing ? t('editHabit') : t('newHabit')}
                 </Text>
                 <View style={styles.headerActions}>
                     {isEditing && (
@@ -772,10 +1019,10 @@ const AddHabitScreen = ({ navigation, route }) => {
                     >
                         {/* Información Básica */}
                         <View style={[styles.card, { backgroundColor: colors.surface, shadowColor: colors.text }]}>
-                            <Text style={[styles.cardTitle, { color: colors.text }]}>Información Básica</Text>
+                            <Text style={[styles.cardTitle, { color: colors.text }]}>{t('basicInfo')}</Text>
                             
                             <View style={styles.section}>
-                                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Nombre del Hábito *</Text>
+                                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('habitNameRequired')}</Text>
                                 <TextInput
                                     style={[styles.input, { 
                                         borderColor: colors.border,
@@ -784,14 +1031,14 @@ const AddHabitScreen = ({ navigation, route }) => {
                                     }]}
                                     value={habitName}
                                     onChangeText={setHabitName}
-                                    placeholder="Ej: Leer 30 minutos"
+                                    placeholder={t('habitNamePlaceholder')}
                                     placeholderTextColor={colors.placeholder}
                                     returnKeyType="next"
                                 />
                             </View>
 
                             <View style={styles.section}>
-                                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Descripción</Text>
+                                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('description')}</Text>
                                 <TextInput
                                     style={[styles.input, styles.textArea, { 
                                         borderColor: colors.border,
@@ -802,7 +1049,7 @@ const AddHabitScreen = ({ navigation, route }) => {
                                     onChangeText={setHabitDescription}
                                     multiline
                                     numberOfLines={3}
-                                    placeholder="Describe tu hábito..."
+                                    placeholder={t('descriptionPlaceholder')}
                                     placeholderTextColor={colors.placeholder}
                                     returnKeyType="done"
                                 />
@@ -811,7 +1058,7 @@ const AddHabitScreen = ({ navigation, route }) => {
 
                         {/* Iconos organizados por categorías */}
                         <View style={[styles.card, { backgroundColor: colors.surface, shadowColor: colors.text }]}>
-                            <Text style={[styles.cardTitle, { color: colors.text }]}>Icono *</Text>
+                            <Text style={[styles.cardTitle, { color: colors.text }]}>{t('iconRequired')}</Text>
                             
                             {Object.entries(iconCategories).map(([categoryName, categoryIcons]) => (
                                 <View key={categoryName} style={styles.iconCategorySection}>
@@ -848,14 +1095,14 @@ const AddHabitScreen = ({ navigation, route }) => {
                         {/* Categoría con mantenimiento */}
                         <View style={[styles.card, { backgroundColor: colors.surface, shadowColor: colors.text }]}>
                             <View style={styles.cardHeaderWithAction}>
-                                <Text style={[styles.cardTitle, { color: colors.text }]}>Categoría *</Text>
+                                <Text style={[styles.cardTitle, { color: colors.text }]}>{t('categoryRequired')}</Text>
                                 <TouchableOpacity
                                     style={[styles.manageButton, { backgroundColor: colors.primary + '20' }]}
                                     onPress={() => setShowCategoryModal(true)}
                                     activeOpacity={0.7}
                                 >
                                     <Edit3 size={16} color={colors.primary} />
-                                    <Text style={[styles.manageButtonText, { color: colors.primary }]}>Gestionar</Text>
+                                    <Text style={[styles.manageButtonText, { color: colors.primary }]}>{t('manage')}</Text>
                                 </TouchableOpacity>
                             </View>
                             
@@ -889,7 +1136,7 @@ const AddHabitScreen = ({ navigation, route }) => {
 
                         {/* Meta y Objetivos con mantenimiento de unidades */}
                         <View style={[styles.card, { backgroundColor: colors.surface, shadowColor: colors.text }]}>
-                            <Text style={[styles.cardTitle, { color: colors.text }]}>Meta y Objetivos</Text>
+                            <Text style={[styles.cardTitle, { color: colors.text }]}>{t('goalsAndTargets')}</Text>
                             
                             <View style={styles.targetContainer}>
                                 <TouchableOpacity 
@@ -925,14 +1172,14 @@ const AddHabitScreen = ({ navigation, route }) => {
 
                             <View style={styles.section}>
                                 <View style={styles.cardHeaderWithAction}>
-                                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Unidad de Medida</Text>
+                                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('unitOfMeasure')}</Text>
                                     <TouchableOpacity
                                         style={[styles.manageButton, { backgroundColor: colors.primary + '20' }]}
                                         onPress={() => setShowUnitModal(true)}
                                         activeOpacity={0.7}
                                     >
                                         <Edit3 size={14} color={colors.primary} />
-                                        <Text style={[styles.manageButtonText, { color: colors.primary, fontSize: 12 }]}>Gestionar</Text>
+                                        <Text style={[styles.manageButtonText, { color: colors.primary, fontSize: 12 }]}>{t('manage')}</Text>
                                     </TouchableOpacity>
                                 </View>
                                 <ScrollView 
@@ -972,14 +1219,14 @@ const AddHabitScreen = ({ navigation, route }) => {
                         {/* Frecuencia con mantenimiento */}
                         <View style={[styles.card, { backgroundColor: colors.surface, shadowColor: colors.text }]}>
                             <View style={styles.cardHeaderWithAction}>
-                                <Text style={[styles.cardTitle, { color: colors.text }]}>Frecuencia *</Text>
+                                <Text style={[styles.cardTitle, { color: colors.text }]}>{t('frequencyRequired')}</Text>
                                 <TouchableOpacity
                                     style={[styles.manageButton, { backgroundColor: colors.primary + '20' }]}
                                     onPress={() => setShowFrequencyModal(true)}
                                     activeOpacity={0.7}
                                 >
                                     <Edit3 size={16} color={colors.primary} />
-                                    <Text style={[styles.manageButtonText, { color: colors.primary }]}>Gestionar</Text>
+                                    <Text style={[styles.manageButtonText, { color: colors.primary }]}>{t('manage')}</Text>
                                 </TouchableOpacity>
                             </View>
                             
@@ -1011,14 +1258,14 @@ const AddHabitScreen = ({ navigation, route }) => {
                             </View>
                         </View>
 
-{/*                      
+                        {/* Recordatorios */}
                         <View style={[styles.card, { backgroundColor: colors.surface, shadowColor: colors.text }]}>
-                            <Text style={[styles.cardTitle, { color: colors.text }]}>Recordatorios</Text>
+                            <Text style={[styles.cardTitle, { color: colors.text }]}>{t('reminders')}</Text>
                             
                             <View style={styles.reminderToggle}>
                                 <View style={styles.reminderInfo}>
                                     <Bell size={20 * SCALE} color={colors.primary} />
-                                    <Text style={[styles.reminderText, { color: colors.text }]}>Activar recordatorios</Text>
+                                    <Text style={[styles.reminderText, { color: colors.text }]}>{t('enableReminders')}</Text>
                                 </View>
                                 <Switch
                                     value={reminderEnabled}
@@ -1056,11 +1303,11 @@ const AddHabitScreen = ({ navigation, route }) => {
                                     }}
                                 />
                             )}
-                        </View> */}
+                        </View>
 
                         {/* Notas Adicionales */}
                         <View style={[styles.card, { backgroundColor: colors.surface, shadowColor: colors.text }]}>
-                            <Text style={[styles.cardTitle, { color: colors.text }]}>Notas Adicionales</Text>
+                            <Text style={[styles.cardTitle, { color: colors.text }]}>{t('additionalNotes')}</Text>
                             
                             <View style={styles.section}>
                                 <TextInput
@@ -1073,7 +1320,7 @@ const AddHabitScreen = ({ navigation, route }) => {
                                     onChangeText={setNotes}
                                     multiline
                                     numberOfLines={3}
-                                    placeholder="Notas sobre este hábito..."
+                                    placeholder={t('notesPlaceholder')}
                                     placeholderTextColor={colors.placeholder}
                                     returnKeyType="done"
                                 />
@@ -1087,8 +1334,8 @@ const AddHabitScreen = ({ navigation, route }) => {
             </KeyboardAvoidingView>
 
             {/* Modales de mantenimiento */}
-            {renderMaintenanceModal('Categorías', categories, 'categories', showCategoryModal, setShowCategoryModal)}
-            {renderMaintenanceModal('Frecuencias', frequencies, 'frequencies', showFrequencyModal, setShowFrequencyModal)}
+            {renderMaintenanceModal(t('category'), categories, 'categories', showCategoryModal, setShowCategoryModal)}
+            {renderMaintenanceModal(t('frequency'), frequencies, 'frequencies', showFrequencyModal, setShowFrequencyModal)}
             {renderMaintenanceModal('Unidades', units, 'units', showUnitModal, setShowUnitModal)}
         </View>
     );
@@ -1128,7 +1375,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16 * SCALE,
         paddingTop: 50 * SCALE,
         paddingBottom: 20 * SCALE,
-        zIndex: 1000, // Asegurar que el header esté por encima
+        zIndex: 1000,
     },
     backButton: {
         width: 40 * SCALE,
@@ -1161,8 +1408,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    
-    // Mejoras en el contenedor del scroll principal
     keyboardView: {
         flex: 1,
     },
@@ -1174,7 +1419,6 @@ const styles = StyleSheet.create({
         padding: 16 * SCALE,
         flexGrow: 1,
     },
-    
     card: {
         borderRadius: 16 * SCALE,
         padding: 16 * SCALE,
@@ -1281,7 +1525,7 @@ const styles = StyleSheet.create({
         marginBottom: 8 * SCALE,
     },
     unitsScrollContent: {
-        paddingRight: 16 * SCALE, // Espacio adicional al final
+        paddingRight: 16 * SCALE,
     },
     unitButton: {
         paddingHorizontal: 12 * SCALE,
@@ -1339,7 +1583,7 @@ const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        justifyContent: 'flex-end', // Cambiado para better UX en móviles
+        justifyContent: 'flex-end',
     },
     modalBackdrop: {
         position: 'absolute',
@@ -1349,8 +1593,8 @@ const styles = StyleSheet.create({
         bottom: 0,
     },
     modalKeyboardView: {
-        maxHeight: SCREEN_HEIGHT * 0.9, // Máximo 90% de la pantalla
-        minHeight: SCREEN_HEIGHT * 0.5, // Mínimo 50% de la pantalla
+        maxHeight: SCREEN_HEIGHT * 0.9,
+        minHeight: SCREEN_HEIGHT * 0.5,
     },
     modalContainer: {
         borderTopLeftRadius: 24 * SCALE,
@@ -1375,7 +1619,6 @@ const styles = StyleSheet.create({
         paddingTop: 24 * SCALE,
         paddingBottom: 20 * SCALE,
         borderBottomWidth: 1.5,
-        // No flex, para que sea fixed
     },
     modalTitle: {
         fontSize: 22 * SCALE,
@@ -1389,8 +1632,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    
-    // Contenedor scrolleable del modal
     modalScrollContainer: {
         flex: 1,
     },
@@ -1398,12 +1639,10 @@ const styles = StyleSheet.create({
         flexGrow: 1,
         paddingBottom: 24 * SCALE,
     },
-    
     addNewSection: {
         paddingHorizontal: 24 * SCALE,
         paddingVertical: 20 * SCALE,
         borderBottomWidth: 1,
-        // No flex, sección fija
     },
     addNewTitle: {
         fontSize: 16 * SCALE,
@@ -1438,13 +1677,11 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 3,
     },
-    
-    // Lista de elementos con scroll mejorado
     itemsListContainer: {
         flex: 1,
         paddingHorizontal: 24 * SCALE,
         paddingTop: 16 * SCALE,
-        minHeight: 200 * SCALE, // Altura mínima para el scroll
+        minHeight: 200 * SCALE,
     },
     itemsListTitle: {
         fontSize: 16 * SCALE,
@@ -1469,8 +1706,6 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontStyle: 'italic',
     },
-    
-    // Contenedor de items mejorado
     itemsContainer: {
         flex: 1,
     },
@@ -1484,7 +1719,7 @@ const styles = StyleSheet.create({
         borderRadius: 12 * SCALE,
         marginBottom: 4 * SCALE,
         marginHorizontal: 2 * SCALE,
-        minHeight: 60 * SCALE, // Altura mínima para mejor UX
+        minHeight: 60 * SCALE,
     },
     itemInfo: {
         flex: 1,
